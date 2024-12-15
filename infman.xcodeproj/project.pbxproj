@@ -6,6 +6,15 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		D1FA3F552D0E6EAF00FE6E29 /* Cocoa.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = D1FA3F542D0E6EAE00FE6E29 /* Cocoa.framework */; };
+		D1FA3F572D0E6EBA00FE6E29 /* CoreVideo.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = D1FA3F562D0E6EBA00FE6E29 /* CoreVideo.framework */; };
+		D1FA3F592D0E6EC200FE6E29 /* IOKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = D1FA3F582D0E6EC200FE6E29 /* IOKit.framework */; };
+		D1FA3F5B2D0E6ECC00FE6E29 /* OpenGL.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = D1FA3F5A2D0E6ECC00FE6E29 /* OpenGL.framework */; };
+		D1FA3F5E2D0E6F1800FE6E29 /* raylib.h in Frameworks */ = {isa = PBXBuildFile; fileRef = D1FA3F5D2D0E6F1800FE6E29 /* raylib.h */; };
+		D1FA3F5F2D0E6F2700FE6E29 /* librarylib.a in Frameworks */ = {isa = PBXBuildFile; fileRef = D1FA3F5C2D0E6EE900FE6E29 /* librarylib.a */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXCopyFilesBuildPhase section */
 		D1FA3F472D0E46B400FE6E29 /* CopyFiles */ = {
 			isa = PBXCopyFilesBuildPhase;
@@ -20,6 +29,12 @@
 
 /* Begin PBXFileReference section */
 		D1FA3F492D0E46B400FE6E29 /* infman */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = infman; sourceTree = BUILT_PRODUCTS_DIR; };
+		D1FA3F542D0E6EAE00FE6E29 /* Cocoa.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Cocoa.framework; path = System/Library/Frameworks/Cocoa.framework; sourceTree = SDKROOT; };
+		D1FA3F562D0E6EBA00FE6E29 /* CoreVideo.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreVideo.framework; path = System/Library/Frameworks/CoreVideo.framework; sourceTree = SDKROOT; };
+		D1FA3F582D0E6EC200FE6E29 /* IOKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = IOKit.framework; path = System/Library/Frameworks/IOKit.framework; sourceTree = SDKROOT; };
+		D1FA3F5A2D0E6ECC00FE6E29 /* OpenGL.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = OpenGL.framework; path = System/Library/Frameworks/OpenGL.framework; sourceTree = SDKROOT; };
+		D1FA3F5C2D0E6EE900FE6E29 /* librarylib.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = librarylib.a; path = raylib/librarylib.a; sourceTree = "<group>"; };
+		D1FA3F5D2D0E6F1800FE6E29 /* raylib.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = raylib.h; path = raylib/raylib.h; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -35,6 +50,12 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				D1FA3F5F2D0E6F2700FE6E29 /* librarylib.a in Frameworks */,
+				D1FA3F5E2D0E6F1800FE6E29 /* raylib.h in Frameworks */,
+				D1FA3F552D0E6EAF00FE6E29 /* Cocoa.framework in Frameworks */,
+				D1FA3F5B2D0E6ECC00FE6E29 /* OpenGL.framework in Frameworks */,
+				D1FA3F572D0E6EBA00FE6E29 /* CoreVideo.framework in Frameworks */,
+				D1FA3F592D0E6EC200FE6E29 /* IOKit.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -45,6 +66,7 @@
 			isa = PBXGroup;
 			children = (
 				D1FA3F4B2D0E46B400FE6E29 /* infman */,
+				D1FA3F532D0E6EAD00FE6E29 /* Frameworks */,
 				D1FA3F4A2D0E46B400FE6E29 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -55,6 +77,19 @@
 				D1FA3F492D0E46B400FE6E29 /* infman */,
 			);
 			name = Products;
+			sourceTree = "<group>";
+		};
+		D1FA3F532D0E6EAD00FE6E29 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				D1FA3F5D2D0E6F1800FE6E29 /* raylib.h */,
+				D1FA3F5C2D0E6EE900FE6E29 /* librarylib.a */,
+				D1FA3F5A2D0E6ECC00FE6E29 /* OpenGL.framework */,
+				D1FA3F582D0E6EC200FE6E29 /* IOKit.framework */,
+				D1FA3F562D0E6EBA00FE6E29 /* CoreVideo.framework */,
+				D1FA3F542D0E6EAE00FE6E29 /* Cocoa.framework */,
+			);
+			name = Frameworks;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -245,6 +280,10 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
+				LIBRARY_SEARCH_PATHS = (
+					"$(inherited)",
+					"$(PROJECT_DIR)/raylib",
+				);
 				PRODUCT_NAME = "$(TARGET_NAME)";
 			};
 			name = Debug;
@@ -253,6 +292,10 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
+				LIBRARY_SEARCH_PATHS = (
+					"$(inherited)",
+					"$(PROJECT_DIR)/raylib",
+				);
 				PRODUCT_NAME = "$(TARGET_NAME)";
 			};
 			name = Release;
