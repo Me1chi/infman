@@ -13,11 +13,16 @@
 #define BUTTONWIDTH 150
 #define BUTTONHEIGHT 75
 
-int current_screen = 1; //0 for gaming, 1 to pause and 2 for main_menu --> may be initialized as 2!
+int current_screen = 1; //0 for gaming, 1 to pause and 2 to main_menu --> may be initialized as 2!
 
-Texture2D blue_texture;
-Texture2D green_texture;
+//declares the global textures for the main menu
 
+
+//declares the global textures for the pause menu
+Texture2D resume_texture;
+Texture2D main_menu_texture;
+
+//declares the global textures for the gaming screen
 
 typedef struct {
     //vector quantities
@@ -37,7 +42,7 @@ typedef struct {
     bool blocked_left;
 } PLAYER;
 
-int menu_display(void); //
+int menu_display(void);
 int leader_board_display(void);
 
 int gaming(void);
@@ -54,19 +59,31 @@ int main(void) {
     InitAudioDevice();
     
     //textures initialization
-    
+    Image blueImage = GenImageColor(BUTTONWIDTH, BUTTONHEIGHT, BLUE);
+    resume_texture = LoadTextureFromImage(blueImage);
+    UnloadImage(blueImage);
+
+    Image greenImage = GenImageColor(BUTTONWIDTH, BUTTONHEIGHT, GREEN);
+    main_menu_texture = LoadTextureFromImage(greenImage);
+    UnloadImage(greenImage);
     
     //sounds initialization
     
     
     printf("Hello, World!\n");
     
-    //define as 60 the target fps
+    //defines as 60 the target fps
     SetTargetFPS(60);
     
     while (!WindowShouldClose()) {
+        
         pause();
+        
     }
+    
+    //textures unloading
+    UnloadTexture(resume_texture);
+    UnloadTexture(main_menu_texture);
     
     //closes the audio device
     CloseAudioDevice();
@@ -94,29 +111,44 @@ int pause_display(void) {
     
     Vector2 mouse_pointer = {0.0f, 0.0f};
     
+    int resume_hovering, main_menu_hovering;
+    
     while (option == 1) {
         mouse_pointer = GetMousePosition();
+        resume_hovering = 0;
+        main_menu_hovering = 0;
         
         if (CheckCollisionPointRec(mouse_pointer, resume)) {
+            resume_hovering = 1;
             if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON))
                 option--;
         }
         
         if (CheckCollisionPointRec(mouse_pointer, main_menu)) {
+            main_menu_hovering = 1;
             if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON))
                 option++;
         }
         
         BeginDrawing();
         
-        ClearBackground(RAYWHITE);// Draw buttons
+        ClearBackground(RAYWHITE);
         
-                DrawTexture(blue_texture, resume.x, resume.y, WHITE);
-                DrawTexture(green_texture, main_menu.x, main_menu.y, WHITE);
-
-                // Add text labels for buttons
-                DrawText("RESUME", resume.x + 20, resume.y + 20, 20, BLACK);
-                DrawText("MAIN MENU", main_menu.x + 10, main_menu.y + 20, 20, BLACK);
+        //draw resume buttons
+        if (resume_hovering == 1)
+            DrawTexture(resume_texture, resume.x, resume.y, GRAY);
+        else
+            DrawTexture(resume_texture, resume.x, resume.y, WHITE);
+    
+        //draw main menu buttons
+        if (main_menu_hovering == 1)
+            DrawTexture(main_menu_texture, main_menu.x, main_menu.y, GRAY);
+        else
+            DrawTexture(main_menu_texture, main_menu.x, main_menu.y, WHITE);
+            
+        //add text labels for the buttons
+        DrawText("RESUME", resume.x + 20, resume.y + 20, 20, BLACK);
+        DrawText("MAIN MENU", main_menu.x + 10, main_menu.y + 20, 20, BLACK);
         
         EndDrawing();
         
