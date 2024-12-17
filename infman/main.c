@@ -14,15 +14,19 @@
 #define BUTTONHEIGHT 75
 
 int current_screen = 1; //0 for gaming, 1 to pause and 2 to main_menu --> may be initialized as 2!
+int do_not_exit = 1; //defined as 1, must only be modified by the main menu EXIT button!
 
 //declares the global textures for the main menu
-
+Texture2D play_texture;
+Texture2D leaderboard_texture;
+Texture2D exit_texture;
 
 //declares the global textures for the pause menu
 Texture2D resume_texture;
 Texture2D main_menu_texture;
 
 //declares the global textures for the gaming screen
+
 
 typedef struct {
     //vector quantities
@@ -42,14 +46,21 @@ typedef struct {
     bool blocked_left;
 } PLAYER;
 
-int menu_display(void);
-int leader_board_display(void);
+//functions declarations (organized)
 
+//main menu related functions
+void main_menu_test(void); //tests if the player should be in the main menu and calls main_menu_test() if it does (MUST BE THE FIRST FUNCTION TO RUN IN THE MAIN LOOP!!!
+int main_menu_display(void); //displays the main menu with the options: PLAY, LEADERBOARD and EXIT
+int leaderboard_display(void); //displays the leaderboard (the top5 players)
+
+//pause menu related functions
+void pause(void); //verifies if the game can be paused and calls pause_display() when P is pressed
+int pause_display(void); //displays the pause menu with the options: RESUME and MAIN MENU
+
+//gaming related functions
 int gaming(void);
 
-void pause(void); //makes the pause button work
-int pause_display(void); //runs the pause menu with the options: RESUME -> 0 and MAIN MENU -> 2
-
+//main function
 int main(void) {
    
     //initializes the game window
@@ -67,6 +78,17 @@ int main(void) {
     main_menu_texture = LoadTextureFromImage(greenImage);
     UnloadImage(greenImage);
     
+    Image redImage = GenImageColor(BUTTONWIDTH, BUTTONHEIGHT, RED);
+    play_texture = LoadTextureFromImage(redImage);
+    UnloadImage(redImage);
+    
+    Image yellowImage = GenImageColor(BUTTONWIDTH, BUTTONHEIGHT, YELLOW);
+    leaderboard_texture = LoadTextureFromImage(yellowImage);
+    UnloadImage(yellowImage);
+    
+    Image orangeImage = GenImageColor(BUTTONWIDTH, BUTTONHEIGHT, ORANGE);
+    exit_texture = LoadTextureFromImage(orangeImage);
+    UnloadImage(orangeImage);
     //sounds initialization
     
     
@@ -75,8 +97,8 @@ int main(void) {
     //defines as 60 the target fps
     SetTargetFPS(60);
     
-    while (!WindowShouldClose()) {
-        
+    while (!WindowShouldClose() && do_not_exit) {
+        main_menu_test();
         pause();
         
     }
@@ -95,29 +117,33 @@ int main(void) {
 }
 
 void pause(void) {
+    //tests if the pause menu must open...
     if (IsKeyPressed(KEY_P) && !current_screen)
         current_screen = 1;
-     
+    //...if it must, opens
     if (current_screen == 1)
         current_screen = pause_display();
 }
 
 int pause_display(void) {
  
-    int option = 1;
+    int option = 1; //the "current_screen" value, changed by the player's action
+    int resume_hovering, main_menu_hovering; //hovering variables
     
+    //declares a variable to know where the user will click (duh!)
+    Vector2 mouse_pointer = {0.0f, 0.0f};
+    
+    //build the rectangles representing the buttons logically
     Rectangle resume = {SCREENWIDTH/2 - BUTTONWIDTH/2, SCREENHEIGHT/2 - SCREENHEIGHT/12, BUTTONWIDTH, BUTTONHEIGHT};
     Rectangle main_menu = {SCREENWIDTH/2 - BUTTONWIDTH/2, SCREENHEIGHT/2 + SCREENHEIGHT/12, BUTTONWIDTH, BUTTONHEIGHT};
     
-    Vector2 mouse_pointer = {0.0f, 0.0f};
-    
-    int resume_hovering, main_menu_hovering;
-    
+    //pause menu loop that waits for the player's action
     while (option == 1) {
         mouse_pointer = GetMousePosition();
         resume_hovering = 0;
         main_menu_hovering = 0;
         
+        //hovering and click tests
         if (CheckCollisionPointRec(mouse_pointer, resume)) {
             resume_hovering = 1;
             if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON))
@@ -130,6 +156,7 @@ int pause_display(void) {
                 option++;
         }
         
+        //graphical part of the pause menu
         BeginDrawing();
         
         ClearBackground(RAYWHITE);
@@ -152,6 +179,86 @@ int pause_display(void) {
         
         EndDrawing();
         
+    }
+    return option;
+}
+
+void main_menu_test(void) {
+    //tests if it must enter the main menu
+    if (current_screen == 2) {
+        current_screen = main_menu_display();
+    }
+}
+
+int main_menu_display(void) {
+    
+    int option = 2; //the "current_screen" value, changed by the player's action
+    int play_hovering, leaderboard_hovering, exit_hovering; //hovering variables
+    
+    //declares a variable to know where the user will click (duh!)
+    Vector2 mouse_pointer = {0.0f, 0.0f};
+    
+    //build the rectangles representing the buttons logically
+    Rectangle play = {SCREENWIDTH/2 - BUTTONWIDTH/2, SCREENHEIGHT/3, 2*BUTTONWIDTH, BUTTONHEIGHT};
+    Rectangle leaderboard = {SCREENWIDTH/2 - BUTTONWIDTH/2, SCREENHEIGHT/3 + SCREENHEIGHT/6, 2*BUTTONWIDTH, BUTTONHEIGHT};
+    Rectangle exit = {SCREENWIDTH/2 - BUTTONWIDTH/2, SCREENHEIGHT/3 + SCREENHEIGHT/3, 2*BUTTONWIDTH, BUTTONHEIGHT};
+    
+    //main menu loop that closes when the player make an action
+    while (option == 2 && do_not_exit) {
+        mouse_pointer = GetMousePosition();
+        play_hovering = 0;
+        leaderboard_hovering = 0;
+        exit_hovering = 0;
+        
+        //hovering and click tests
+        if (CheckCollisionPointRec(mouse_pointer, play)) {
+            play_hovering = 1;
+            if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON))
+                option = 0; //starts the game
+        }
+        
+        if (CheckCollisionPointRec(mouse_pointer, leaderboard)) {
+            leaderboard_hovering = 1;
+            if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON))
+                option = 2;
+                //AQUI TEM QUE FAZER A CHAMADA DA FUNCAO LEADERBOARD
+        }
+        
+        if (CheckCollisionPointRec(mouse_pointer, exit)) {
+            exit_hovering = 1;
+            if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON))
+                do_not_exit = 0; //makes the game quit
+        }
+        
+        //graphical part of the main menu
+        BeginDrawing();
+        
+        ClearBackground(RAYWHITE);
+        
+        //draw play buttons
+        if (play_hovering == 1)
+            DrawTexture(play_texture, play.x, play.y, GRAY);
+        else
+            DrawTexture(play_texture, play.x, play.y, WHITE);
+    
+        //draw leaderboard buttons
+        if (leaderboard_hovering == 1)
+            DrawTexture(leaderboard_texture, leaderboard.x, leaderboard.y, GRAY);
+        else
+            DrawTexture(leaderboard_texture, leaderboard.x, leaderboard.y, WHITE);
+        
+        //draw exit buttons
+        if (exit_hovering == 1)
+            DrawTexture(exit_texture, exit.x, exit.y, GRAY);
+        else
+            DrawTexture(exit_texture, exit.x, exit.y, WHITE);
+        
+        //add text labels for the buttons
+        DrawText("PLAY", play.x + 20, play.y + 20, 20, BLACK);
+        DrawText("LEADERBOARD", leaderboard.x, leaderboard.y + 20, 20, BLACK);
+        DrawText("EXIT", exit.x + 10, exit.y + 20, 20, BLACK);
+
+        EndDrawing();
     }
     return option;
 }
