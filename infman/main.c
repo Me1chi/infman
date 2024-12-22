@@ -12,21 +12,7 @@
 #define SCREENHEIGHT 600
 #define BUTTONWIDTH 150
 #define BUTTONHEIGHT 75
-
-int current_screen = 1; //0 for gaming, 1 to pause and 2 to main_menu --> may be initialized as 2!
-int do_not_exit = 1; //defined as 1, must only be modified by the main menu EXIT button!
-
-//declares the global textures for the main menu
-Texture2D play_texture;
-Texture2D leaderboard_texture;
-Texture2D exit_texture;
-
-//declares the global textures for the pause menu
-Texture2D resume_texture;
-Texture2D main_menu_texture;
-
-//declares the global textures for the gaming screen
-
+#define TOPLAYERS 5
 
 typedef struct {
     //vector quantities
@@ -46,12 +32,34 @@ typedef struct {
     bool blocked_left;
 } PLAYER;
 
+//global variables
+int current_screen = 1; //0 for gaming, 1 to pause and 2 to main_menu --> may be initialized as 2!
+int do_not_exit = 1; //defined as 1, must only be modified by the main menu EXIT button!
+PLAYER top_players[TOPLAYERS]; //array containing the top5 players, filled by the reading of top_scores.bin
+
+//declares the global textures for the main menu
+Texture2D play_texture;
+Texture2D leaderboard_texture;
+Texture2D exit_texture;
+Texture2D leaderboard_table_texture;
+
+//declares the global textures for the pause menu
+Texture2D resume_texture;
+Texture2D main_menu_texture;
+
+//declares the global textures for the gaming screen
+
+
+
 //functions declarations (organized)
+
+//binaries related functions
+void read_top_players(void); //reads a binary file containing information about the top 5 players
 
 //main menu related functions
 void main_menu_test(void); //tests if the player should be in the main menu and calls main_menu_test() if it does (MUST BE THE FIRST FUNCTION TO RUN IN THE MAIN LOOP!!!
 int main_menu_display(void); //displays the main menu with the options: PLAY, LEADERBOARD and EXIT
-int leaderboard_display(void); //displays the leaderboard (the top5 players)
+void leaderboard_display(void); //displays the leaderboard (the top5 players)
 
 //pause menu related functions
 void pause(void); //verifies if the game can be paused and calls pause_display() when P is pressed
@@ -89,6 +97,10 @@ int main(void) {
     Image orangeImage = GenImageColor(BUTTONWIDTH, BUTTONHEIGHT, ORANGE);
     exit_texture = LoadTextureFromImage(orangeImage);
     UnloadImage(orangeImage);
+    
+    Image violetImage = GenImageColor(BUTTONWIDTH*2, BUTTONHEIGHT*4, VIOLET);
+    leaderboard_table_texture = LoadTextureFromImage(violetImage);
+    UnloadImage(violetImage);
     //sounds initialization
     
     
@@ -117,10 +129,10 @@ int main(void) {
 }
 
 void pause(void) {
-    //tests if the pause menu must open...
+    //tests if the pause menu must open
     if (IsKeyPressed(KEY_P) && !current_screen)
         current_screen = 1;
-    //...if it must, opens
+
     if (current_screen == 1)
         current_screen = pause_display();
 }
@@ -174,8 +186,8 @@ int pause_display(void) {
             DrawTexture(main_menu_texture, main_menu.x, main_menu.y, WHITE);
             
         //add text labels for the buttons
-        DrawText("RESUME", resume.x + 20, resume.y + 20, 20, BLACK);
-        DrawText("MAIN MENU", main_menu.x + 10, main_menu.y + 20, 20, BLACK);
+        DrawText("RESUME", resume.x + 30, resume.y + 20, 20, BLACK);
+        DrawText("MAIN MENU", main_menu.x + 15, main_menu.y + 25, 20, BLACK);
         
         EndDrawing();
         
@@ -220,8 +232,7 @@ int main_menu_display(void) {
         if (CheckCollisionPointRec(mouse_pointer, leaderboard)) {
             leaderboard_hovering = 1;
             if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON))
-                option = 2;
-                //AQUI TEM QUE FAZER A CHAMADA DA FUNCAO LEADERBOARD
+                leaderboard_display(); //shows the leaderboard
         }
         
         if (CheckCollisionPointRec(mouse_pointer, exit)) {
@@ -254,11 +265,58 @@ int main_menu_display(void) {
             DrawTexture(exit_texture, exit.x, exit.y, WHITE);
         
         //add text labels for the buttons
-        DrawText("PLAY", play.x + 20, play.y + 20, 20, BLACK);
-        DrawText("LEADERBOARD", leaderboard.x, leaderboard.y + 20, 20, BLACK);
-        DrawText("EXIT", exit.x + 10, exit.y + 20, 20, BLACK);
+        DrawText("PLAY", play.x + 45, play.y + 25, 20, BLACK);
+        DrawText("LEADERBOARD", leaderboard.x + 10, leaderboard.y + 25, 19, BLACK);
+        DrawText("EXIT", exit.x + 50, exit.y + 25, 20, BLACK);
 
         EndDrawing();
     }
     return option;
+}
+
+void leaderboard_display(void) {
+    int close_leaderboard = 0;
+    int hovering;
+    Vector2 mouse_pointer = {0.0f, 0.0f};
+    
+    Rectangle leaderboard_table = {SCREENWIDTH/2 - BUTTONWIDTH, SCREENHEIGHT/2 - SCREENHEIGHT/3, BUTTONWIDTH*2, BUTTONHEIGHT*4};
+    
+    Rectangle main_menu = {SCREENWIDTH/2 - BUTTONWIDTH/2, SCREENHEIGHT/2 + SCREENHEIGHT/3, BUTTONWIDTH, BUTTONHEIGHT};
+    
+    while (!close_leaderboard) {
+        mouse_pointer = GetMousePosition();
+        hovering = 0;
+        
+        //makes the button that returns to main menu work
+        if (CheckCollisionPointRec(mouse_pointer, main_menu)) {
+            hovering = 1;
+            if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON))
+                close_leaderboard = 1;
+        }
+        
+        BeginDrawing();
+        
+        ClearBackground(RAYWHITE);
+        
+        if (hovering == 1)
+            DrawTexture(main_menu_texture, main_menu.x, main_menu.y, GRAY);
+        else
+            DrawTexture(main_menu_texture, main_menu.x, main_menu.y, WHITE);
+        
+        //draws the leaderboard itself
+        DrawTexture(leaderboard_table_texture, leaderboard_table.x, leaderboard_table.y, WHITE);
+        
+        //draw the player and score titles
+        DrawText("PLAYER", leaderboard_table.x, leaderboard_table.y, 18, BLACK);
+        DrawText("SCORE", leaderboard_table.x + BUTTONWIDTH*2 - 60, leaderboard_table.y, 18, BLACK);
+        
+        //FALTA CODIGO PRA MOSTRAR OS CARAS MAS O NEGOCIO EH QUE EH BOM TER A FUNCAO
+        //QUE LE O BINARIO PRA FAZER O ARRAY BONITINHO JA DAI VAI DA CERTO E VAI FICA PERFEITO
+        //QUANDO FOR CONTINUAR O CODIGO TEM QUE CONTINUAR NA FUNCAO QUE LE O BINARIO E SO
+        //DEPOIS VOLTAR AQUI, MAS POR ENQUANTO A TRANSICAO ENTRE MENUS TA FUNCIONANDO
+        
+        DrawText("MAIN MENU", main_menu.x + 15, main_menu.y + 25, 20, BLACK);
+        
+        EndDrawing();
+    }
 }
