@@ -8,11 +8,13 @@
 #include <stdio.h>
 #include <time.h>
 
-#define SCREENWIDTH 1200
-#define SCREENHEIGHT 600
-#define BUTTONWIDTH 150
-#define BUTTONHEIGHT 75
-#define TOPLAYERS 5
+#define SCREENWIDTH 1200.0
+#define SCREENHEIGHT 600.0
+#define BUTTONWIDTH 150.0
+#define BUTTONHEIGHT 75.0
+#define FONTSIZE 20.0
+#define TOPLAYERS 10
+#define MAXNAME 9
 
 typedef struct {
     //vector quantities
@@ -24,18 +26,42 @@ typedef struct {
     int ammo_laser;
     int ammo_bazooka;
     int hearts;
-    int points;
+    int score;
     
-    //collision testing
+    //state testing
+    bool laser_shooting;
+    bool bazooka_shooting;
     bool on_floor;
     bool blocked_right;
     bool blocked_left;
 } PLAYER;
 
+//this type is meant to be used in the top 10 ranking
+typedef struct {
+    char name[MAXNAME + 1]; //the + 1 comes from the NULL character
+    int score;
+} PLAYER_ON_TOP;
+
 //global variables
-int current_screen = 1; //0 for gaming, 1 to pause and 2 to main_menu --> may be initialized as 2!
+int current_screen = 2; //0 for gaming, 1 to pause and 2 to main_menu --> may be initialized as 2!
 int do_not_exit = 1; //defined as 1, must only be modified by the main menu EXIT button!
-PLAYER top_players[TOPLAYERS]; //array containing the top5 players, filled by the reading of top_scores.bin
+PLAYER_ON_TOP top_players[TOPLAYERS]; //array containing the top players, filled by the reading of top_scores.bin
+
+//==================================================================
+
+//TESTE APAGAR DEPOIS
+PLAYER_ON_TOP p0 = {"Calabreso", 0};
+PLAYER_ON_TOP p1 = {"BoraBill", 0};
+PLAYER_ON_TOP p2 = {"Irineu", 0};
+PLAYER_ON_TOP p3 = {"Bicho", 0};
+PLAYER_ON_TOP p4 = {"Outfit", 0};
+PLAYER_ON_TOP p5 = {"BluePen", 0};
+PLAYER_ON_TOP p6 = {"Betina", 0};
+PLAYER_ON_TOP p7 = {"Caixao", 0};
+PLAYER_ON_TOP p8 = {"FakeNatty", 0};
+PLAYER_ON_TOP p9 = {"Tacaca", 0};
+
+//==================================================================
 
 //declares the global textures for the main menu
 Texture2D play_texture;
@@ -54,7 +80,7 @@ Texture2D main_menu_texture;
 //functions declarations (organized)
 
 //binaries related functions
-void read_top_players(void); //reads a binary file containing information about the top 5 players
+void bin_to_top_players(void); //reads a binary file containing the top players information
 
 //main menu related functions
 void main_menu_test(void); //tests if the player should be in the main menu and calls main_menu_test() if it does (MUST BE THE FIRST FUNCTION TO RUN IN THE MAIN LOOP!!!
@@ -70,7 +96,19 @@ int gaming(void);
 
 //main function
 int main(void) {
-   
+    //TESTE TESTE APAGAR DEPOIS
+    top_players[0] = p0;
+    top_players[1] = p1;
+    top_players[2] = p2;
+    top_players[3] = p3;
+    top_players[4] = p4;
+    top_players[5] = p5;
+    top_players[6] = p6;
+    top_players[7] = p7;
+    top_players[8] = p8;
+    top_players[9] = p9;
+    //APAGAR ATE AQUI
+    
     //initializes the game window
     InitWindow(SCREENWIDTH, SCREENHEIGHT, "INFman");
     
@@ -186,8 +224,8 @@ int pause_display(void) {
             DrawTexture(main_menu_texture, main_menu.x, main_menu.y, WHITE);
             
         //add text labels for the buttons
-        DrawText("RESUME", resume.x + 30, resume.y + 20, 20, BLACK);
-        DrawText("MAIN MENU", main_menu.x + 15, main_menu.y + 25, 20, BLACK);
+        DrawText("RESUME", resume.x + 30, resume.y + 20, FONTSIZE, BLACK);
+        DrawText("MAIN MENU", main_menu.x + 15, main_menu.y + 25, FONTSIZE, BLACK);
         
         EndDrawing();
         
@@ -215,7 +253,7 @@ int main_menu_display(void) {
     Rectangle leaderboard = {SCREENWIDTH/2 - BUTTONWIDTH/2, SCREENHEIGHT/3 + SCREENHEIGHT/6, 2*BUTTONWIDTH, BUTTONHEIGHT};
     Rectangle exit = {SCREENWIDTH/2 - BUTTONWIDTH/2, SCREENHEIGHT/3 + SCREENHEIGHT/3, 2*BUTTONWIDTH, BUTTONHEIGHT};
     
-    //main menu loop that closes when the player make an action
+    //main menu loop that closes when the player makes an action
     while (option == 2 && do_not_exit) {
         mouse_pointer = GetMousePosition();
         play_hovering = 0;
@@ -265,9 +303,9 @@ int main_menu_display(void) {
             DrawTexture(exit_texture, exit.x, exit.y, WHITE);
         
         //add text labels for the buttons
-        DrawText("PLAY", play.x + 45, play.y + 25, 20, BLACK);
-        DrawText("LEADERBOARD", leaderboard.x + 10, leaderboard.y + 25, 19, BLACK);
-        DrawText("EXIT", exit.x + 50, exit.y + 25, 20, BLACK);
+        DrawText("PLAY", play.x + 45, play.y + 25, FONTSIZE, BLACK);
+        DrawText("LEADERBOARD", leaderboard.x + 10, leaderboard.y + 25, FONTSIZE*19/20, BLACK);
+        DrawText("EXIT", exit.x + 50, exit.y + 25, FONTSIZE, BLACK);
 
         EndDrawing();
     }
@@ -277,6 +315,7 @@ int main_menu_display(void) {
 void leaderboard_display(void) {
     int close_leaderboard = 0;
     int hovering;
+    char score_string[MAXNAME];
     Vector2 mouse_pointer = {0.0f, 0.0f};
     
     Rectangle leaderboard_table = {SCREENWIDTH/2 - BUTTONWIDTH, SCREENHEIGHT/2 - SCREENHEIGHT/3, BUTTONWIDTH*2, BUTTONHEIGHT*4};
@@ -307,15 +346,23 @@ void leaderboard_display(void) {
         DrawTexture(leaderboard_table_texture, leaderboard_table.x, leaderboard_table.y, WHITE);
         
         //draw the player and score titles
-        DrawText("PLAYER", leaderboard_table.x, leaderboard_table.y, 18, BLACK);
-        DrawText("SCORE", leaderboard_table.x + BUTTONWIDTH*2 - 60, leaderboard_table.y, 18, BLACK);
+        DrawText("PLAYER", leaderboard_table.x, leaderboard_table.y, FONTSIZE/10*9, BLACK);
+        DrawText("SCORE", leaderboard_table.x + BUTTONWIDTH*2 - 60, leaderboard_table.y, FONTSIZE/10*9, BLACK);
         
         //FALTA CODIGO PRA MOSTRAR OS CARAS MAS O NEGOCIO EH QUE EH BOM TER A FUNCAO
         //QUE LE O BINARIO PRA FAZER O ARRAY BONITINHO JA DAI VAI DA CERTO E VAI FICA PERFEITO
         //QUANDO FOR CONTINUAR O CODIGO TEM QUE CONTINUAR NA FUNCAO QUE LE O BINARIO E SO
         //DEPOIS VOLTAR AQUI, MAS POR ENQUANTO A TRANSICAO ENTRE MENUS TA FUNCIONANDO
         
-        DrawText("MAIN MENU", main_menu.x + 15, main_menu.y + 25, 20, BLACK);
+        //draw the top players names and its scores
+        for (int i = 0; i < TOPLAYERS; i++) {
+            sprintf(score_string, "%d", top_players[i].score);
+            
+            DrawText(top_players[i].name, leaderboard_table.x, leaderboard_table.y + FONTSIZE + i*FONTSIZE, FONTSIZE/5*4, BLACK);
+            DrawText(score_string, leaderboard_table.x + BUTTONWIDTH*2 - 60, leaderboard_table.y + FONTSIZE + i*FONTSIZE, FONTSIZE/5*4, BLACK);
+        }
+        
+        DrawText("MAIN MENU", main_menu.x + 15, main_menu.y + 25, FONTSIZE, BLACK);
         
         EndDrawing();
     }
