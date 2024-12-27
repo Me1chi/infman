@@ -12,13 +12,13 @@
 					<key>EndingColumnNumber</key>
 					<string>0</string>
 					<key>EndingLineNumber</key>
-					<string>355</string>
+					<string>343</string>
 					<key>StartingColumnNumber</key>
 					<string>0</string>
 					<key>StartingLineNumber</key>
-					<string>354</string>
+					<string>342</string>
 					<key>Timestamp</key>
-					<string>756766177.66308</string>
+					<string>756961200.212267</string>
 				</dict>
 				<key>rebasable-url</key>
 				<dict>
@@ -34,106 +34,16 @@
 			<key>text-context</key>
 			<dict>
 				<key>focused</key>
-				<string>        //DEPOIS VOLTAR AQUI, MAS POR ENQUANTO A TRANSICAO ENTRE MENUS TA FUNCIONANDO
+				<string>    if ((fileptr = fopen("/Users/melch/Desktop/Projetos/projetos_faculdade/infman/infman/bin/top_scores.bin", "r+")) != NULL) {
 </string>
 				<key>leading</key>
-				<string>        //QUE LE O BINARIO PRA FAZER O ARRAY BONITINHO JA DAI VAI DA CERTO E VAI FICA PERFEITO
-        //QUANDO FOR CONTINUAR O CODIGO TEM QUE CONTINUAR NA FUNCAO QUE LE O BINARIO E SO
+				<string>    FILE *fileptr;
+    
 </string>
 				<key>trailing</key>
-				<string>        
-        //draw the top players names and its scores
-        for (int i = 0; i &lt; TOPLAYERS; i++) {
-</string>
-			</dict>
-			<key>type</key>
-			<string>bookmark</string>
-		</dict>
-		<dict>
-			<key>destination</key>
-			<dict>
-				<key>location-parameters</key>
-				<dict>
-					<key>EndingColumnNumber</key>
-					<string>0</string>
-					<key>EndingLineNumber</key>
-					<string>99</string>
-					<key>StartingColumnNumber</key>
-					<string>0</string>
-					<key>StartingLineNumber</key>
-					<string>98</string>
-					<key>Timestamp</key>
-					<string>756766177.663039</string>
-				</dict>
-				<key>rebasable-url</key>
-				<dict>
-					<key>base</key>
-					<string>workspace</string>
-					<key>payload</key>
-					<dict>
-						<key>relative-path</key>
-						<string>infman/main.c</string>
-					</dict>
-				</dict>
-			</dict>
-			<key>text-context</key>
-			<dict>
-				<key>focused</key>
-				<string>    //TESTE TESTE APAGAR DEPOIS
-</string>
-				<key>leading</key>
-				<string>//main function
-int main(void) {
-</string>
-				<key>trailing</key>
-				<string>    top_players[0] = p0;
-    top_players[1] = p1;
-    top_players[2] = p2;
-</string>
-			</dict>
-			<key>type</key>
-			<string>bookmark</string>
-		</dict>
-		<dict>
-			<key>destination</key>
-			<dict>
-				<key>location-parameters</key>
-				<dict>
-					<key>EndingColumnNumber</key>
-					<string>0</string>
-					<key>EndingLineNumber</key>
-					<string>51</string>
-					<key>StartingColumnNumber</key>
-					<string>0</string>
-					<key>StartingLineNumber</key>
-					<string>50</string>
-					<key>Timestamp</key>
-					<string>756766153.553368</string>
-				</dict>
-				<key>rebasable-url</key>
-				<dict>
-					<key>base</key>
-					<string>workspace</string>
-					<key>payload</key>
-					<dict>
-						<key>relative-path</key>
-						<string>infman/main.c</string>
-					</dict>
-				</dict>
-			</dict>
-			<key>text-context</key>
-			<dict>
-				<key>focused</key>
-				<string>//TESTE APAGAR DEPOIS
-</string>
-				<key>leading</key>
-				<string>//==================================================================
-
-</string>
-				<key>trailing</key>
-				<string>PLAYER_ON_TOP p0 = {"Calabreso", 0};
-PLAYER_ON_TOP p1 = {"BoraBill", 0};
-PLAYER_ON_TOP p2 = {"Irineu", 0};
+				<string>        fread(top_players, sizeof(PLAYER_ON_TOP), TOPLAYERS, fileptr);
+    } else
+        do_not_exit = 0;
 </string>
 			</dict>
 			<key>type</key>

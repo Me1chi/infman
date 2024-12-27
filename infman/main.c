@@ -47,22 +47,6 @@ int current_screen = 2; //0 for gaming, 1 to pause and 2 to main_menu --> may be
 int do_not_exit = 1; //defined as 1, must only be modified by the main menu EXIT button!
 PLAYER_ON_TOP top_players[TOPLAYERS]; //array containing the top players, filled by the reading of top_scores.bin
 
-//==================================================================
-
-//TESTE APAGAR DEPOIS
-PLAYER_ON_TOP p0 = {"Calabreso", 0};
-PLAYER_ON_TOP p1 = {"BoraBill", 0};
-PLAYER_ON_TOP p2 = {"Irineu", 0};
-PLAYER_ON_TOP p3 = {"Bicho", 0};
-PLAYER_ON_TOP p4 = {"Outfit", 0};
-PLAYER_ON_TOP p5 = {"BluePen", 0};
-PLAYER_ON_TOP p6 = {"Betina", 0};
-PLAYER_ON_TOP p7 = {"Caixao", 0};
-PLAYER_ON_TOP p8 = {"FakeNatty", 0};
-PLAYER_ON_TOP p9 = {"Tacaca", 0};
-
-//==================================================================
-
 //declares the global textures for the main menu
 Texture2D play_texture;
 Texture2D leaderboard_texture;
@@ -96,18 +80,8 @@ int gaming(void);
 
 //main function
 int main(void) {
-    //TESTE TESTE APAGAR DEPOIS
-    top_players[0] = p0;
-    top_players[1] = p1;
-    top_players[2] = p2;
-    top_players[3] = p3;
-    top_players[4] = p4;
-    top_players[5] = p5;
-    top_players[6] = p6;
-    top_players[7] = p7;
-    top_players[8] = p8;
-    top_players[9] = p9;
-    //APAGAR ATE AQUI
+    //initializes the top players array with the binary file
+    bin_to_top_players();
     
     //initializes the game window
     InitWindow(SCREENWIDTH, SCREENHEIGHT, "INFman");
@@ -346,19 +320,14 @@ void leaderboard_display(void) {
         DrawTexture(leaderboard_table_texture, leaderboard_table.x, leaderboard_table.y, WHITE);
         
         //draw the player and score titles
-        DrawText("PLAYER", leaderboard_table.x, leaderboard_table.y, FONTSIZE/10*9, BLACK);
+        DrawText("PLAYER", leaderboard_table.x + 2, leaderboard_table.y, FONTSIZE/10*9, BLACK);
         DrawText("SCORE", leaderboard_table.x + BUTTONWIDTH*2 - 60, leaderboard_table.y, FONTSIZE/10*9, BLACK);
-        
-        //FALTA CODIGO PRA MOSTRAR OS CARAS MAS O NEGOCIO EH QUE EH BOM TER A FUNCAO
-        //QUE LE O BINARIO PRA FAZER O ARRAY BONITINHO JA DAI VAI DA CERTO E VAI FICA PERFEITO
-        //QUANDO FOR CONTINUAR O CODIGO TEM QUE CONTINUAR NA FUNCAO QUE LE O BINARIO E SO
-        //DEPOIS VOLTAR AQUI, MAS POR ENQUANTO A TRANSICAO ENTRE MENUS TA FUNCIONANDO
-        
+
         //draw the top players names and its scores
         for (int i = 0; i < TOPLAYERS; i++) {
             sprintf(score_string, "%d", top_players[i].score);
             
-            DrawText(top_players[i].name, leaderboard_table.x, leaderboard_table.y + FONTSIZE + i*FONTSIZE, FONTSIZE/5*4, BLACK);
+            DrawText(top_players[i].name, leaderboard_table.x + 2, leaderboard_table.y + FONTSIZE + i*FONTSIZE, FONTSIZE/5*4, BLACK);
             DrawText(score_string, leaderboard_table.x + BUTTONWIDTH*2 - 60, leaderboard_table.y + FONTSIZE + i*FONTSIZE, FONTSIZE/5*4, BLACK);
         }
         
@@ -366,4 +335,15 @@ void leaderboard_display(void) {
         
         EndDrawing();
     }
+}
+
+void bin_to_top_players(void) {
+    FILE *fileptr;
+    
+    if ((fileptr = fopen("/Users/melch/Desktop/Projetos/projetos_faculdade/infman/infman/bin/top_scores.bin", "r+")) != NULL) {
+        fread(top_players, sizeof(PLAYER_ON_TOP), TOPLAYERS, fileptr);
+    } else
+        do_not_exit = 0;
+    
+    fclose(fileptr);
 }
