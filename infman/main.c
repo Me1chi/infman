@@ -12,6 +12,8 @@
 #define SCREENHEIGHT 600.0
 #define BUTTONWIDTH 150.0
 #define BUTTONHEIGHT 75.0
+#define MAPLENGTH 100
+#define MAPHEIGHT 10
 #define FONTSIZE 20.0
 #define TOPLAYERS 10
 #define MAXNAME 9
@@ -44,8 +46,9 @@ typedef struct {
 
 //global variables
 int current_screen = 2; //0 for gaming, 1 to pause and 2 to main_menu --> may be initialized as 2!
-int do_not_exit = 1; //defined as 1, must only be modified by the main menu EXIT button!
+int do_not_exit = 1; //defined as 1, must only be modified by the main menu EXIT button or the ERROR HANDLING functions!!
 PLAYER_ON_TOP top_players[TOPLAYERS]; //array containing the top players, filled by the reading of top_scores.bin
+char map[MAPHEIGHT][MAPLENGTH]; //matrix containing the map description, filled by the reading of terrain.txt
 
 //declares the global textures for the main menu
 Texture2D play_texture;
@@ -66,6 +69,9 @@ Texture2D main_menu_texture;
 //binaries related functions
 void bin_to_top_players(void); //reads a binary file containing the top players information
 
+//text related functions
+void txt_to_map(void); //reads a binary file containing the map information
+
 //main menu related functions
 void main_menu_test(void); //tests if the player should be in the main menu and calls main_menu_test() if it does (MUST BE THE FIRST FUNCTION TO RUN IN THE MAIN LOOP!!!
 int main_menu_display(void); //displays the main menu with the options: PLAY, LEADERBOARD and EXIT
@@ -77,11 +83,13 @@ int pause_display(void); //displays the pause menu with the options: RESUME and 
 
 //gaming related functions
 int gaming(void);
+void draw_map(void);
 
 //main function
 int main(void) {
-    //initializes the top players array with the binary file
-    bin_to_top_players();
+    //functions to initialize the arrays with the files
+    bin_to_top_players(); //top players
+    txt_to_map(); //map matrix
     
     //initializes the game window
     InitWindow(SCREENWIDTH, SCREENHEIGHT, "INFman");
@@ -347,3 +355,23 @@ void bin_to_top_players(void) {
     
     fclose(fileptr);
 }
+
+void txt_to_map(void) {
+    char lido;
+    FILE *fileptr;
+    
+    if ((fileptr = fopen("/Users/melch/Desktop/Projetos/projetos_faculdade/infman/resources/map/terrain.txt", "r")) != NULL) {
+        for (int i = 0; i < MAPHEIGHT; i++) {
+            for (int j = 0; j < MAPLENGTH; j++) {
+                fscanf(fileptr, "%c", &lido);
+                if (lido == '\n')
+                    fscanf(fileptr, "%c", &lido);
+                map[i][j] = lido;
+            }
+        }
+        fclose(fileptr);
+    } else
+        do_not_exit = 0;
+}
+
+
