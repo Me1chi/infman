@@ -12,13 +12,13 @@
 					<key>EndingColumnNumber</key>
 					<string>0</string>
 					<key>EndingLineNumber</key>
-					<string>351</string>
+					<string>356</string>
 					<key>StartingColumnNumber</key>
 					<string>0</string>
 					<key>StartingLineNumber</key>
-					<string>350</string>
+					<string>355</string>
 					<key>Timestamp</key>
-					<string>757049225.981522</string>
+					<string>757285084.681332</string>
 				</dict>
 				<key>rebasable-url</key>
 				<dict>
@@ -48,6 +48,51 @@
 			</dict>
 			<key>title</key>
 			<string>CHANGE FROM ABSOLUTE TO RELATIVE PATH</string>
+			<key>type</key>
+			<string>bookmark</string>
+		</dict>
+		<dict>
+			<key>destination</key>
+			<dict>
+				<key>location-parameters</key>
+				<dict>
+					<key>EndingColumnNumber</key>
+					<string>0</string>
+					<key>EndingLineNumber</key>
+					<string>112</string>
+					<key>StartingColumnNumber</key>
+					<string>0</string>
+					<key>StartingLineNumber</key>
+					<string>111</string>
+					<key>Timestamp</key>
+					<string>757281035.997734</string>
+				</dict>
+				<key>rebasable-url</key>
+				<dict>
+					<key>base</key>
+					<string>workspace</string>
+					<key>payload</key>
+					<dict>
+						<key>relative-path</key>
+						<string>infman/main.c</string>
+					</dict>
+				</dict>
+			</dict>
+			<key>text-context</key>
+			<dict>
+				<key>focused</key>
+				<string>    init_player_map(); //initializes the player and the map matrix
+</string>
+				<key>leading</key>
+				<string>    //functions to initialize the arrays with the files
+    bin_to_top_players(); //top players initialization
+</string>
+				<key>trailing</key>
+				<string>    
+    //initializes the game window
+    InitWindow(SCREENWIDTH, SCREENHEIGHT, "INFman");
+</string>
+			</dict>
 			<key>type</key>
 			<string>bookmark</string>
 		</dict>

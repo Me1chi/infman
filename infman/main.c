@@ -7,6 +7,7 @@
 #include "raylib.h"
 #include <stdio.h>
 #include <time.h>
+#include <math.h>
 
 #define SCREENWIDTH 1200.0
 #define SCREENHEIGHT 600.0
@@ -14,6 +15,11 @@
 #define BUTTONHEIGHT 75.0
 #define MAPLENGTH 100
 #define MAPHEIGHT 10
+#define PLAYERSIZE 16
+#define PLAYERAMMO1 16
+#define PLAYERAMMO2 5
+#define PLAYERHEARTS 3
+#define TILESIZE 16
 #define FONTSIZE 20.0
 #define TOPLAYERS 10
 #define MAXNAME 9
@@ -34,6 +40,7 @@ typedef struct {
     bool laser_shooting;
     bool bazooka_shooting;
     bool on_floor;
+    bool on_ceiling;
     bool blocked_right;
     bool blocked_left;
 } PLAYER;
@@ -45,10 +52,11 @@ typedef struct {
 } PLAYER_ON_TOP;
 
 //global variables
-int current_screen = 2; //0 for gaming, 1 to pause and 2 to main_menu --> may be initialized as 2!
+int current_screen = 0; //0 for gaming, 1 to pause and 2 to main_menu --> may be initialized as 2!
 int do_not_exit = 1; //defined as 1, must only be modified by the main menu EXIT button or the ERROR HANDLING functions!!
 PLAYER_ON_TOP top_players[TOPLAYERS]; //array containing the top players, filled by the reading of top_scores.bin
 char map[MAPHEIGHT][MAPLENGTH]; //matrix containing the map description, filled by the reading of terrain.txt
+PLAYER player;
 
 //declares the global textures for the main menu
 Texture2D play_texture;
@@ -61,16 +69,22 @@ Texture2D resume_texture;
 Texture2D main_menu_texture;
 
 //declares the global textures for the gaming screen
-
-
+Texture2D background_texture;
+Texture2D floor_texture;
+Texture2D obstacle_texture;
+Texture2D enemy_texture;
+Texture2D player_texture;
 
 //functions declarations (organized)
+
+//textures related functions
+void load_textures(void); //load all the game textures
 
 //binaries related functions
 void bin_to_top_players(void); //reads a binary file containing the top players information
 
 //text related functions
-void txt_to_map(void); //reads a binary file containing the map information
+Vector2 txt_to_map(void); //reads a binary file containing the map information and returns the player's initial position
 
 //main menu related functions
 void main_menu_test(void); //tests if the player should be in the main menu and calls main_menu_test() if it does (MUST BE THE FIRST FUNCTION TO RUN IN THE MAIN LOOP!!!
@@ -82,14 +96,20 @@ void pause(void); //verifies if the game can be paused and calls pause_display()
 int pause_display(void); //displays the pause menu with the options: RESUME and MAIN MENU
 
 //gaming related functions
+void gaming_test(void);
 int gaming(void);
-void draw_map(void);
+void init_player_map(void);
+void draw_map(Color filter);
+void draw_background(Color filter);
+void draw_player(void);
+void player_movement(void);
+void is_player_on(char option); //Collision test: L or R -> left or right, C or F -> ceiling or floor
 
 //main function
 int main(void) {
     //functions to initialize the arrays with the files
-    bin_to_top_players(); //top players
-    txt_to_map(); //map matrix
+    bin_to_top_players(); //top players initialization
+    init_player_map(); //initializes the player and the map matrix
     
     //initializes the game window
     InitWindow(SCREENWIDTH, SCREENHEIGHT, "INFman");
@@ -98,29 +118,8 @@ int main(void) {
     InitAudioDevice();
     
     //textures initialization
-    Image blueImage = GenImageColor(BUTTONWIDTH, BUTTONHEIGHT, BLUE);
-    resume_texture = LoadTextureFromImage(blueImage);
-    UnloadImage(blueImage);
-
-    Image greenImage = GenImageColor(BUTTONWIDTH, BUTTONHEIGHT, GREEN);
-    main_menu_texture = LoadTextureFromImage(greenImage);
-    UnloadImage(greenImage);
+    load_textures();
     
-    Image redImage = GenImageColor(BUTTONWIDTH, BUTTONHEIGHT, RED);
-    play_texture = LoadTextureFromImage(redImage);
-    UnloadImage(redImage);
-    
-    Image yellowImage = GenImageColor(BUTTONWIDTH, BUTTONHEIGHT, YELLOW);
-    leaderboard_texture = LoadTextureFromImage(yellowImage);
-    UnloadImage(yellowImage);
-    
-    Image orangeImage = GenImageColor(BUTTONWIDTH, BUTTONHEIGHT, ORANGE);
-    exit_texture = LoadTextureFromImage(orangeImage);
-    UnloadImage(orangeImage);
-    
-    Image violetImage = GenImageColor(BUTTONWIDTH*2, BUTTONHEIGHT*4, VIOLET);
-    leaderboard_table_texture = LoadTextureFromImage(violetImage);
-    UnloadImage(violetImage);
     //sounds initialization
     
     
@@ -132,7 +131,7 @@ int main(void) {
     while (!WindowShouldClose() && do_not_exit) {
         main_menu_test();
         pause();
-        
+        gaming_test();
     }
     
     //textures unloading
@@ -193,6 +192,10 @@ int pause_display(void) {
         
         ClearBackground(RAYWHITE);
         
+        draw_background(DARKGRAY);
+        
+        draw_map(DARKGRAY);
+        
         //draw resume buttons
         if (resume_hovering == 1)
             DrawTexture(resume_texture, resume.x, resume.y, GRAY);
@@ -245,8 +248,10 @@ int main_menu_display(void) {
         //hovering and click tests
         if (CheckCollisionPointRec(mouse_pointer, play)) {
             play_hovering = 1;
-            if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON))
+            if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
+                init_player_map();
                 option = 0; //starts the game
+            }
         }
         
         if (CheckCollisionPointRec(mouse_pointer, leaderboard)) {
@@ -356,22 +361,236 @@ void bin_to_top_players(void) {
     fclose(fileptr);
 }
 
-void txt_to_map(void) {
-    char lido;
+Vector2 txt_to_map(void) {
+    int player_exists = 0;
+    char read;
     FILE *fileptr;
+    Vector2 player_position = {0, 0};
     
     if ((fileptr = fopen("/Users/melch/Desktop/Projetos/projetos_faculdade/infman/resources/map/terrain.txt", "r")) != NULL) {
         for (int i = 0; i < MAPHEIGHT; i++) {
             for (int j = 0; j < MAPLENGTH; j++) {
-                fscanf(fileptr, "%c", &lido);
-                if (lido == '\n')
-                    fscanf(fileptr, "%c", &lido);
-                map[i][j] = lido;
+                fscanf(fileptr, "%c", &read);
+                if (read == '\n')
+                    fscanf(fileptr, "%c", &read);
+                else if (read == 'P') {
+                    player_position = (Vector2){j*TILESIZE, i*TILESIZE};
+                    player_exists = 1;
+                }
+                map[i][j] = read;
             }
         }
         fclose(fileptr);
     } else
         do_not_exit = 0;
+    
+    if (!player_exists)
+        do_not_exit = 0;
+    
+    return player_position;
+}
+
+void draw_map(Color filter) {
+    
+    Vector2 drawing_position;
+    
+    for (int i = 0; i < MAPHEIGHT; i++) {
+        for (int j = 0; j < MAPLENGTH; j++) {
+            drawing_position = (Vector2){j*TILESIZE, i*TILESIZE};
+            switch (map[i][j]) {
+                case 'O': //draw the floor/wall standard tile
+                    DrawTextureV(floor_texture, drawing_position, filter);
+                    break;
+                case 'S': //draw the obstacle
+                    DrawTextureV(obstacle_texture, drawing_position, filter);
+                    break;
+                case 'M': //draw the enemies
+                    DrawTextureV(enemy_texture, drawing_position, filter);
+                    break;
+                case 'P': //draw the player
+                    DrawTextureV(player_texture, player.position, filter);
+                    break;
+            }
+        }
+    }
+}
+
+void init_player_map(void) {
+    player.hearts = PLAYERHEARTS;
+    player.size = (Vector2){PLAYERSIZE, PLAYERSIZE};
+    player.speed = (Vector2){0, 0};
+    player.position = txt_to_map(); //initializes the player position and the map
+    player.ammo_laser = PLAYERAMMO1;
+    player.ammo_bazooka = PLAYERAMMO2;
+    player.score = 0;
+    player.laser_shooting = 0;
+    player.bazooka_shooting = 0;
+    player.blocked_left = 0;
+    player.blocked_right = 0;
+    player.on_floor = 0;
+    player.on_ceiling = 0;
+}
+
+void load_textures(void) {
+    background_texture = LoadTexture("/Users/melch/Desktop/projetos/projetos_faculdade/infman/resources/map/background.png");
+    
+    Image blueImage = GenImageColor(BUTTONWIDTH, BUTTONHEIGHT, BLUE);
+    resume_texture = LoadTextureFromImage(blueImage);
+    UnloadImage(blueImage);
+
+    Image greenImage = GenImageColor(BUTTONWIDTH, BUTTONHEIGHT, GREEN);
+    main_menu_texture = LoadTextureFromImage(greenImage);
+    UnloadImage(greenImage);
+    
+    Image redImage = GenImageColor(BUTTONWIDTH, BUTTONHEIGHT, RED);
+    play_texture = LoadTextureFromImage(redImage);
+    UnloadImage(redImage);
+    
+    Image yellowImage = GenImageColor(BUTTONWIDTH, BUTTONHEIGHT, YELLOW);
+    leaderboard_texture = LoadTextureFromImage(yellowImage);
+    UnloadImage(yellowImage);
+    
+    Image orangeImage = GenImageColor(BUTTONWIDTH, BUTTONHEIGHT, ORANGE);
+    exit_texture = LoadTextureFromImage(orangeImage);
+    UnloadImage(orangeImage);
+    
+    Image violetImage = GenImageColor(BUTTONWIDTH*2, BUTTONHEIGHT*4, VIOLET);
+    leaderboard_table_texture = LoadTextureFromImage(violetImage);
+    UnloadImage(violetImage);
+    
+    floor_texture = LoadTexture("/Users/melch/Desktop/projetos/projetos_faculdade/infman/resources/map/tile1.png");
+    
+    obstacle_texture = LoadTexture("/Users/melch/Desktop/projetos/projetos_faculdade/infman/resources/map/spike.png");
+    
+    Image beigeImage = GenImageColor(PLAYERSIZE, PLAYERSIZE, BEIGE);
+    player_texture = LoadTextureFromImage(beigeImage);
+    UnloadImage(beigeImage);
+    
+    Image darkPurpleImage = GenImageColor(PLAYERSIZE, PLAYERSIZE, DARKPURPLE);
+    enemy_texture = LoadTextureFromImage(darkPurpleImage);
+    UnloadImage(darkPurpleImage);
+}
+
+void draw_background(Color filter) {
+    int backgrounds_to_draw = ceilf(SCREENWIDTH/200);
+    
+    for (int i = 0; i < backgrounds_to_draw; i++) {
+        DrawTexture(background_texture, 202*i, 0, filter);
+    }
+}
+
+void draw_player(void) {
+    //6 possible sprites: stand, walking right/left, shooting laser/bazooka,
+}
+
+void player_movement(void) {
+    player.position.x += player.speed.x;
+    player.position.y += player.speed.y;
+    
+    //horizontal movement
+    if (IsKeyDown(KEY_D) && !player.blocked_right)
+        player.speed.x = 0.5f;
+    else if (IsKeyDown(KEY_A)  && !player.blocked_left)
+        player.speed.x = -0.5f;
+    else
+        player.speed.x = 0.0f;
+    
+    //vertical movement
+    if (player.on_floor) {
+        player.speed.y = 0.0f; //gravity action
+        
+        if (IsKeyDown(KEY_SPACE)) {
+            player.speed.y = -2.0f;
+        }
+    } else
+        player.speed.y += 0.1f;
+}
+
+void is_player_on(char option) {
+    int out_of_limits_x = 0;
+    int out_of_limits_y = 0;
+    int out_of_limits = 0;
+    
+    int horizontal_tile = floorf(player.position.x/TILESIZE);
+    int vertical_tile = floorf(player.position.y/TILESIZE);
+    
+    //checks if the player is on the map;
+    if (horizontal_tile <= 0 || horizontal_tile >= MAPLENGTH)
+        out_of_limits_x = 1;
+    
+    if (vertical_tile <= 0 || vertical_tile >= MAPHEIGHT) {
+        out_of_limits_y = 1;
+    }
+    
+    out_of_limits = out_of_limits_x + out_of_limits_y;
+    
+    switch (option) {
+        case 'L':
+            if (!out_of_limits && horizontal_tile > 0) {
+                if (map[vertical_tile][horizontal_tile] == 'O') {
+                    player.blocked_left = 1;
+                } else
+                    player.blocked_left = 0;
+            }
+            break;
+            
+        case 'R':
+            if (!out_of_limits && horizontal_tile < MAPLENGTH - 1) {
+                if (map[vertical_tile][horizontal_tile + 1] == 'O') {
+                    player.blocked_right = 1;
+                } else
+                    player.blocked_right = 0;
+            }
+            break;
+            
+        case 'C':
+            if (!out_of_limits_y && vertical_tile > 0) {
+                if (map[vertical_tile - 1][horizontal_tile] == 'O' || map[vertical_tile - 1][horizontal_tile + 1] == 'O') {
+                    player.on_ceiling = 1;
+                } else
+                    player.on_ceiling = 0;
+            } else
+                player.on_ceiling = 1;
+            break;
+            
+        case 'F':
+            if (!out_of_limits_y && vertical_tile < MAPHEIGHT - 1) {
+                if (map[vertical_tile + 1][horizontal_tile] == 'O' || map[vertical_tile + 1][horizontal_tile + 1] == 'O') {
+                    player.on_floor = 1;
+                } else
+                    player.on_floor = 0;
+            } else
+                player.on_floor = 0;
+            break;
+    }
+}
+
+void gaming_test(void) {
+    //tests if the game must run
+    if (current_screen == 0)
+        gaming();
+}
+
+int gaming(void) {
+    is_player_on('R');
+    is_player_on('L');
+    is_player_on('C');
+    is_player_on('F');
+    
+    BeginDrawing();
+    
+    ClearBackground(RAYWHITE);
+    
+    draw_background(WHITE);
+    
+    draw_map(WHITE);
+    
+    EndDrawing();
+    
+    player_movement();
+    
+    
+    return 0;
 }
 
 
