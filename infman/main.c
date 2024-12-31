@@ -52,7 +52,7 @@ typedef struct {
 } PLAYER_ON_TOP;
 
 //global variables
-int current_screen = 0; //0 for gaming, 1 to pause and 2 to main_menu --> may be initialized as 2!
+int current_screen = 2; //0 for gaming, 1 to pause and 2 to main_menu --> may be initialized as 2!
 int do_not_exit = 1; //defined as 1, must only be modified by the main menu EXIT button or the ERROR HANDLING functions!!
 PLAYER_ON_TOP top_players[TOPLAYERS]; //array containing the top players, filled by the reading of top_scores.bin
 char map[MAPHEIGHT][MAPLENGTH]; //matrix containing the map description, filled by the reading of terrain.txt
@@ -96,14 +96,15 @@ void pause(void); //verifies if the game can be paused and calls pause_display()
 int pause_display(void); //displays the pause menu with the options: RESUME and MAIN MENU
 
 //gaming related functions
-void gaming_test(void);
-int gaming(void);
+void gaming_test(Camera2D *player_camera);
+int gaming(Camera2D *player_camera);
 void init_player_map(void);
 void draw_map(Color filter);
 void draw_background(Color filter);
 void draw_player(void);
 void player_movement(void);
 void is_player_on(char option); //Collision test: L or R -> left or right, C or F -> ceiling or floor
+void camera_update(Camera2D *camera);
 
 //main function
 int main(void) {
@@ -113,6 +114,12 @@ int main(void) {
     
     //initializes the game window
     InitWindow(SCREENWIDTH, SCREENHEIGHT, "INFman");
+    
+    //dynamic camera initialization
+    Camera2D camera = {0};
+    camera.target.y = MAPHEIGHT;
+    camera.offset = (Vector2){ SCREENWIDTH / 6.0f, 0};
+    camera.zoom = 3.2f;
     
     //initializes the audio devide (if using -> FIX THE XCODE SOUND ISSUE)
     InitAudioDevice();
@@ -131,7 +138,8 @@ int main(void) {
     while (!WindowShouldClose() && do_not_exit) {
         main_menu_test();
         pause();
-        gaming_test();
+        gaming_test(&camera);
+        printf("x = %f | y = %f\n", player.position.x, player.position.y);
     }
     
     //textures unloading
@@ -409,6 +417,7 @@ void draw_map(Color filter) {
                     break;
                 case 'P': //draw the player
                     DrawTextureV(player_texture, player.position, filter);
+                    //DrawTexture(player_texture, player.position.x - 8, player.position.y - 8, filter);
                     break;
             }
         }
@@ -472,15 +481,18 @@ void load_textures(void) {
 }
 
 void draw_background(Color filter) {
-    int backgrounds_to_draw = ceilf(SCREENWIDTH/200);
+    int backgrounds_to_draw = ceilf(MAPLENGTH*TILESIZE);
     
-    for (int i = 0; i < backgrounds_to_draw; i++) {
+    for (int i = -1; i < backgrounds_to_draw; i++) {
         DrawTexture(background_texture, 202*i, 0, filter);
     }
 }
 
 void draw_player(void) {
-    //6 possible sprites: stand, walking right/left, shooting laser/bazooka,
+    //6 possible sprites: stand, walking right/left, shooting laser/bazooka (but they can be combined)
+    if (player.speed.x == 0) {
+        
+    }
 }
 
 void player_movement(void) {
@@ -489,21 +501,21 @@ void player_movement(void) {
     
     //horizontal movement
     if (IsKeyDown(KEY_D) && !player.blocked_right)
-        player.speed.x = 0.5f;
+        player.speed.x = 1.5f;
     else if (IsKeyDown(KEY_A)  && !player.blocked_left)
-        player.speed.x = -0.5f;
+        player.speed.x = -1.5f;
     else
         player.speed.x = 0.0f;
     
     //vertical movement
     if (player.on_floor) {
-        player.speed.y = 0.0f; //gravity action
+        player.speed.y = 0.0f;
         
         if (IsKeyDown(KEY_SPACE)) {
             player.speed.y = -2.0f;
         }
     } else
-        player.speed.y += 0.1f;
+        player.speed.y += 0.1f; //gravity action
 }
 
 void is_player_on(char option) {
@@ -511,8 +523,8 @@ void is_player_on(char option) {
     int out_of_limits_y = 0;
     int out_of_limits = 0;
     
-    int horizontal_tile = floorf(player.position.x/TILESIZE);
-    int vertical_tile = floorf(player.position.y/TILESIZE);
+    int horizontal_tile = floorf(player.position.x / TILESIZE);
+    int vertical_tile = floorf(player.position.y / TILESIZE);
     
     //checks if the player is on the map;
     if (horizontal_tile <= 0 || horizontal_tile >= MAPLENGTH)
@@ -531,6 +543,8 @@ void is_player_on(char option) {
                     player.blocked_left = 1;
                 } else
                     player.blocked_left = 0;
+            } else if (horizontal_tile == 0) {
+                player.blocked_left = 1;
             }
             break;
             
@@ -540,6 +554,8 @@ void is_player_on(char option) {
                     player.blocked_right = 1;
                 } else
                     player.blocked_right = 0;
+            } else if (horizontal_tile == MAPLENGTH - 1) {
+                player.blocked_right = 1;
             }
             break;
             
@@ -559,19 +575,20 @@ void is_player_on(char option) {
                     player.on_floor = 1;
                 } else
                     player.on_floor = 0;
-            } else
-                player.on_floor = 0;
+            } else if (vertical_tile == MAPHEIGHT + 6) {
+                player.hearts = 0;
+            }
             break;
     }
 }
 
-void gaming_test(void) {
+void gaming_test(Camera2D *player_camera) {
     //tests if the game must run
     if (current_screen == 0)
-        gaming();
+        gaming(player_camera);
 }
 
-int gaming(void) {
+int gaming(Camera2D *player_camera) {
     is_player_on('R');
     is_player_on('L');
     is_player_on('C');
@@ -581,16 +598,25 @@ int gaming(void) {
     
     ClearBackground(RAYWHITE);
     
+    BeginMode2D(*player_camera);
+    
     draw_background(WHITE);
     
     draw_map(WHITE);
+    
+    EndMode2D();
     
     EndDrawing();
     
     player_movement();
     
+    camera_update(player_camera);
     
     return 0;
 }
 
-
+void camera_update(Camera2D *camera) {
+    if (!current_screen || current_screen == 1) {
+        camera->target.x = player.position.x;
+    }
+}
