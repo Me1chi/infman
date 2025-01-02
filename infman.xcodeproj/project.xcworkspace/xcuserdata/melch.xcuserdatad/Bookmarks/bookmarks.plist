@@ -12,13 +12,13 @@
 					<key>EndingColumnNumber</key>
 					<string>0</string>
 					<key>EndingLineNumber</key>
-					<string>364</string>
+					<string>372</string>
 					<key>StartingColumnNumber</key>
 					<string>0</string>
 					<key>StartingLineNumber</key>
-					<string>363</string>
+					<string>371</string>
 					<key>Timestamp</key>
-					<string>757375215.346933</string>
+					<string>757516901.531806</string>
 				</dict>
 				<key>rebasable-url</key>
 				<dict>
@@ -34,65 +34,20 @@
 			<key>text-context</key>
 			<dict>
 				<key>focused</key>
-				<string>    if ((fileptr = fopen("/Users/melch/Desktop/Projetos/projetos_faculdade/infman/infman/bin/top_scores.bin", "r+")) != NULL) {
+				<string>Vector2 txt_to_map(void) {
 </string>
 				<key>leading</key>
-				<string>    FILE *fileptr;
-    
+				<string>}
+
 </string>
 				<key>trailing</key>
-				<string>        fread(top_players, sizeof(PLAYER_ON_TOP), TOPLAYERS, fileptr);
-    } else
-        do_not_exit = 0;
+				<string>    int player_exists = 0;
+    char read;
+    FILE *fileptr;
 </string>
 			</dict>
 			<key>title</key>
 			<string>CHANGE FROM ABSOLUTE TO RELATIVE PATH</string>
-			<key>type</key>
-			<string>bookmark</string>
-		</dict>
-		<dict>
-			<key>destination</key>
-			<dict>
-				<key>location-parameters</key>
-				<dict>
-					<key>EndingColumnNumber</key>
-					<string>0</string>
-					<key>EndingLineNumber</key>
-					<string>113</string>
-					<key>StartingColumnNumber</key>
-					<string>0</string>
-					<key>StartingLineNumber</key>
-					<string>112</string>
-					<key>Timestamp</key>
-					<string>757372268.07596</string>
-				</dict>
-				<key>rebasable-url</key>
-				<dict>
-					<key>base</key>
-					<string>workspace</string>
-					<key>payload</key>
-					<dict>
-						<key>relative-path</key>
-						<string>infman/main.c</string>
-					</dict>
-				</dict>
-			</dict>
-			<key>text-context</key>
-			<dict>
-				<key>focused</key>
-				<string>    init_player_map(); //initializes the player and the map matrix
-</string>
-				<key>leading</key>
-				<string>    //functions to initialize the arrays with the files
-    bin_to_top_players(); //top players initialization
-</string>
-				<key>trailing</key>
-				<string>    
-    //initializes the game window
-    InitWindow(SCREENWIDTH, SCREENHEIGHT, "INFman");
-</string>
-			</dict>
 			<key>type</key>
 			<string>bookmark</string>
 		</dict>
