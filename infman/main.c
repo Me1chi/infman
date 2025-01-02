@@ -19,11 +19,16 @@
 #define PLAYERAMMO1 16
 #define PLAYERAMMO2 5
 #define PLAYERHEARTS 3
+#define JUMPSPEED 3.0
+#define GRAVITY 0.1
+#define WALKSPEED 2.0
 #define TILESIZE 16
 #define FONTSIZE 20.0
 #define TOPLAYERS 10
 #define MAXNAME 9
 #define DEFAULTZOOM 3.2
+#define INFMANBLUE1 (Color){0, 136, 252, 255}
+#define INFMANBLUE2 (Color){1, 248, 252, 255}
 
 typedef struct {
     //vector quantities
@@ -76,6 +81,7 @@ Texture2D floor_texture;
 Texture2D obstacle_texture;
 Texture2D enemy_texture;
 Texture2D player_texture;
+Texture2D player_heart_texture;
 
 //functions declarations (organized)
 
@@ -106,8 +112,14 @@ void draw_map(Color filter);
 void draw_background(Color filter);
 void draw_player(void);
 void player_movement(void);
+void player_jump(int scale);
 void is_player_on(char option); //Collision test: L or R -> left or right, C or F -> ceiling or floor
 void camera_update(Camera2D *camera);
+void player_death_test(Camera2D player_camera);
+void player_death(Camera2D player_camera);
+void player_win(void);
+void player_damage(void);
+void draw_player_hearts(int hearts, Camera2D *player_camera);
 
 //main function
 int main(void) {
@@ -500,6 +512,8 @@ void load_textures(void) {
     Image beigeImage = GenImageColor(PLAYERSIZE, PLAYERSIZE, BEIGE);
     player_texture = LoadTextureFromImage(beigeImage);
     UnloadImage(beigeImage);
+    
+    player_heart_texture = LoadTexture("/Users/melch/Desktop/Projetos/projetos_faculdade/infman/resources/player/inf_man-heart.png");
 }
 
 void unload_textures(void) {
@@ -520,6 +534,7 @@ void unload_textures(void) {
     UnloadTexture(obstacle_texture);
     UnloadTexture(enemy_texture);
     UnloadTexture(player_texture);
+    UnloadTexture(player_heart_texture);
 }
 
 void draw_background(Color filter) {
@@ -554,10 +569,14 @@ void player_movement(void) {
         player.speed.y = 0.0f;
         
         if (IsKeyDown(KEY_SPACE)) {
-            player.speed.y = -2.0f;
+            player_jump(1);
         }
     } else
-        player.speed.y += 0.1f; //gravity action
+        player.speed.y += GRAVITY;
+}
+
+void player_jump(int scale) {
+    player.speed.y = -JUMPSPEED*scale;
 }
 
 void is_player_on(char option) {
@@ -646,6 +665,8 @@ int gaming(Camera2D *player_camera) {
     
     draw_map(WHITE);
     
+    draw_player_hearts(player.hearts, player_camera);
+    
     EndMode2D();
     
     EndDrawing();
@@ -653,6 +674,8 @@ int gaming(Camera2D *player_camera) {
     player_movement();
     
     camera_update(player_camera);
+    
+    player_death_test(*player_camera);
     
     return 0;
 }
@@ -663,4 +686,83 @@ void camera_update(Camera2D *camera) {
     }
 }
 
+void player_death_test(Camera2D player_camera) {
+    if (player.hearts <= 0 && !current_screen)
+        player_death(player_camera);
+}
 
+void player_death(Camera2D player_camera) {
+    int accept_flag = 0;
+    int hovering;
+    char player_score_string[MAXNAME];
+    
+    sprintf(player_score_string, "%d", player.score);
+    
+    Vector2 mouse_pointer = {0.0f, 0.0f};
+    
+    EndDrawing();
+    
+    Rectangle main_menu = {player.position.x + SCREENWIDTH/12, MAPHEIGHT*TILESIZE/2 + BUTTONHEIGHT/2, BUTTONWIDTH/DEFAULTZOOM, BUTTONHEIGHT/DEFAULTZOOM};
+    
+    while(accept_flag == 0) {
+        mouse_pointer = GetMousePosition();
+        mouse_pointer = GetScreenToWorld2D(GetMousePosition(), player_camera);
+        hovering = 0;
+        
+        if (CheckCollisionPointRec(mouse_pointer, main_menu)) {
+            hovering = 1;
+            if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
+                current_screen = 2;
+                accept_flag = 1;
+            }
+        }
+        
+        BeginDrawing();
+        
+        ClearBackground(RAYWHITE);
+        
+        BeginMode2D(player_camera);
+        
+        draw_background(DARKGRAY);
+        
+        draw_map(DARKGRAY);
+        
+        if (hovering)
+            DrawTexture(main_menu_texture, main_menu.x, main_menu.y, GRAY);
+        else
+            DrawTexture(main_menu_texture, main_menu.x, main_menu.y, WHITE);
+        
+        DrawTextEx(GetFontDefault(), "MAIN MENU", (Vector2){main_menu.x + 10/DEFAULTZOOM, main_menu.y + 25/DEFAULTZOOM}, FONTSIZE/DEFAULTZOOM, 1, BLACK);
+        
+        EndMode2D();
+        
+        DrawTextEx(GetFontDefault(), "YOU DIED", (Vector2) {12*SCREENWIDTH/31, SCREENHEIGHT/10}, 3*FONTSIZE, FONTSIZE/4, RED);
+
+        DrawTextEx(GetFontDefault(), "SCORE: ", (Vector2){3*SCREENWIDTH/8, SCREENHEIGHT/3}, 3*FONTSIZE, FONTSIZE/4, INFMANBLUE1);
+        
+        DrawTextEx(GetFontDefault(), player_score_string, (Vector2){3*SCREENWIDTH/8 + 9*FONTSIZE + 9*FONTSIZE/4, SCREENHEIGHT/3}, 3*FONTSIZE, FONTSIZE/4, INFMANBLUE2);
+        
+        EndDrawing();
+    }
+}
+
+void player_win(void) {
+    
+}
+
+void player_damage(void) {
+    
+}
+
+void draw_player_hearts(int hearts, Camera2D *player_camera) {
+    Vector2 heart_position = {-2*TILESIZE, 6*TILESIZE};
+    
+    EndMode2D();
+    
+    for (int i = 0; i < hearts; i++) {
+        heart_position.x += TILESIZE * DEFAULTZOOM;
+        DrawTextureEx(player_heart_texture, heart_position, 0, DEFAULTZOOM, WHITE);
+    }
+    
+    BeginMode2D(*player_camera);
+}
