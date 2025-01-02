@@ -64,6 +64,7 @@ Texture2D play_texture;
 Texture2D leaderboard_texture;
 Texture2D exit_texture;
 Texture2D leaderboard_table_texture;
+Texture2D leaderboard_main_menu_texture;
 
 //declares the global textures for the pause menu
 Texture2D resume_texture;
@@ -165,7 +166,7 @@ void pause(Camera2D player_camera) {
 }
 
 int pause_display(Camera2D player_camera) {
- 
+    
     int option = 1; //the "current_screen" value, changed by the player's action
     int resume_hovering, main_menu_hovering; //hovering variables
     
@@ -173,18 +174,20 @@ int pause_display(Camera2D player_camera) {
     Vector2 mouse_pointer = {0.0f, 0.0f};
     
     //build the rectangles representing the buttons logically
-    //Rectangle resume = {SCREENWIDTH/2 - BUTTONWIDTH/2, SCREENHEIGHT/2 - SCREENHEIGHT/12, BUTTONWIDTH, BUTTONHEIGHT};
-    Rectangle main_menu = {SCREENWIDTH/2 - BUTTONWIDTH/2, SCREENHEIGHT/2 + SCREENHEIGHT/12, BUTTONWIDTH, BUTTONHEIGHT};
-    Rectangle resume = {player.position.x + SCREENWIDTH/12, MAPHEIGHT*TILESIZE/2 - BUTTONHEIGHT/2/20, BUTTONWIDTH/DEFAULTZOOM, BUTTONHEIGHT/DEFAULTZOOM };
+    Rectangle resume = {player.position.x + SCREENWIDTH/12, MAPHEIGHT*TILESIZE/2 - BUTTONHEIGHT/2/20, BUTTONWIDTH/DEFAULTZOOM, BUTTONHEIGHT/DEFAULTZOOM};
+    Rectangle main_menu = {player.position.x + SCREENWIDTH/12, MAPHEIGHT*TILESIZE/2 + BUTTONHEIGHT/2, BUTTONWIDTH/DEFAULTZOOM, BUTTONHEIGHT/DEFAULTZOOM};
+    
+    //declaring the variables to store the position of the text drawn in the buttons
+    Vector2 resume_text_position = {resume.x + 27.5/DEFAULTZOOM, resume.y + 25/DEFAULTZOOM};
+    Vector2 main_menu_text_position = {main_menu.x + 10/DEFAULTZOOM, main_menu.y + 25/DEFAULTZOOM};
     
     //pause menu loop that waits for the player's action
     while (option == 1) {
         mouse_pointer = GetMousePosition();
-        mouse_pointer = (Vector2){mouse_pointer.x/DEFAULTZOOM, mouse_pointer.y/DEFAULTZOOM};
+        //automatic adjust to the mouse pointer, using the camera mode
+        mouse_pointer = GetScreenToWorld2D(GetMousePosition(), player_camera);
         resume_hovering = 0;
         main_menu_hovering = 0;
-        
-        printf("x = %f | y = %f\n", mouse_pointer.x, mouse_pointer.y);
         
         //hovering and click tests
         if (CheckCollisionPointRec(mouse_pointer, resume)) {
@@ -223,8 +226,11 @@ int pause_display(Camera2D player_camera) {
             DrawTexture(main_menu_texture, main_menu.x, main_menu.y, WHITE);
             
         //add text labels for the buttons
-        DrawText("RESUME", resume.x + 30/4/DEFAULTZOOM, resume.y + 20/DEFAULTZOOM, FONTSIZE/DEFAULTZOOM, BLACK);
-        DrawText("MAIN MENU", main_menu.x + 15, main_menu.y + 25, FONTSIZE, BLACK);
+        DrawTextEx(GetFontDefault(), "RESUME", resume_text_position, FONTSIZE/DEFAULTZOOM, 1, BLACK);
+        
+        DrawTextEx(GetFontDefault(), "MAIN MENU", main_menu_text_position, FONTSIZE/DEFAULTZOOM, 1, BLACK);
+        
+        //NOTE: DrawTextEx must be used here bc DrawText smallest font would be larger than preferred
         
         EndMode2D();
         
@@ -341,9 +347,9 @@ void leaderboard_display(void) {
         ClearBackground(RAYWHITE);
         
         if (hovering == 1)
-            DrawTexture(main_menu_texture, main_menu.x, main_menu.y, GRAY);
+            DrawTexture(leaderboard_main_menu_texture, main_menu.x, main_menu.y, GRAY);
         else
-            DrawTexture(main_menu_texture, main_menu.x, main_menu.y, WHITE);
+            DrawTexture(leaderboard_main_menu_texture, main_menu.x, main_menu.y, WHITE);
         
         //draws the leaderboard itself
         DrawTexture(leaderboard_table_texture, leaderboard_table.x, leaderboard_table.y, WHITE);
@@ -449,16 +455,8 @@ void init_player_map(void) {
 }
 
 void load_textures(void) {
-    background_texture = LoadTexture("/Users/melch/Desktop/projetos/projetos_faculdade/infman/resources/map/background.png");
     
-    Image blueImage = GenImageColor(BUTTONWIDTH/DEFAULTZOOM, BUTTONHEIGHT/DEFAULTZOOM, BLUE);
-    resume_texture = LoadTextureFromImage(blueImage);
-    UnloadImage(blueImage);
-
-    Image greenImage = GenImageColor(BUTTONWIDTH, BUTTONHEIGHT, GREEN);
-    main_menu_texture = LoadTextureFromImage(greenImage);
-    UnloadImage(greenImage);
-    
+    //main menu textures
     Image redImage = GenImageColor(BUTTONWIDTH, BUTTONHEIGHT, RED);
     play_texture = LoadTextureFromImage(redImage);
     UnloadImage(redImage);
@@ -475,17 +473,33 @@ void load_textures(void) {
     leaderboard_table_texture = LoadTextureFromImage(violetImage);
     UnloadImage(violetImage);
     
+    Image greenImage1 = GenImageColor(BUTTONWIDTH, BUTTONHEIGHT, GREEN);
+    leaderboard_main_menu_texture = LoadTextureFromImage(greenImage1);
+    UnloadImage(greenImage1);
+    
+    //pause menu textures
+    Image blueImage = GenImageColor(BUTTONWIDTH/DEFAULTZOOM, BUTTONHEIGHT/DEFAULTZOOM, BLUE);
+    resume_texture = LoadTextureFromImage(blueImage);
+    UnloadImage(blueImage);
+
+    Image greenImage = GenImageColor(BUTTONWIDTH/DEFAULTZOOM, BUTTONHEIGHT/DEFAULTZOOM, GREEN);
+    main_menu_texture = LoadTextureFromImage(greenImage);
+    UnloadImage(greenImage);
+    
+    //gaming textures
+    background_texture = LoadTexture("/Users/melch/Desktop/projetos/projetos_faculdade/infman/resources/map/background.png");
+    
     floor_texture = LoadTexture("/Users/melch/Desktop/projetos/projetos_faculdade/infman/resources/map/tile1.png");
     
     obstacle_texture = LoadTexture("/Users/melch/Desktop/projetos/projetos_faculdade/infman/resources/map/spike.png");
     
-    Image beigeImage = GenImageColor(PLAYERSIZE, PLAYERSIZE, BEIGE);
-    player_texture = LoadTextureFromImage(beigeImage);
-    UnloadImage(beigeImage);
-    
     Image darkPurpleImage = GenImageColor(PLAYERSIZE, PLAYERSIZE, DARKPURPLE);
     enemy_texture = LoadTextureFromImage(darkPurpleImage);
     UnloadImage(darkPurpleImage);
+    
+    Image beigeImage = GenImageColor(PLAYERSIZE, PLAYERSIZE, BEIGE);
+    player_texture = LoadTextureFromImage(beigeImage);
+    UnloadImage(beigeImage);
 }
 
 void unload_textures(void) {
@@ -494,6 +508,7 @@ void unload_textures(void) {
     UnloadTexture(leaderboard_texture);
     UnloadTexture(exit_texture);
     UnloadTexture(leaderboard_table_texture);
+    UnloadTexture(leaderboard_main_menu_texture);
     
     //pause menu textures
     UnloadTexture(resume_texture);
