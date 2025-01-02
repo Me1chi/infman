@@ -23,6 +23,7 @@
 #define FONTSIZE 20.0
 #define TOPLAYERS 10
 #define MAXNAME 9
+#define DEFAULTZOOM 3.2
 
 typedef struct {
     //vector quantities
@@ -63,6 +64,7 @@ Texture2D play_texture;
 Texture2D leaderboard_texture;
 Texture2D exit_texture;
 Texture2D leaderboard_table_texture;
+Texture2D leaderboard_main_menu_texture;
 
 //declares the global textures for the pause menu
 Texture2D resume_texture;
@@ -79,6 +81,7 @@ Texture2D player_texture;
 
 //textures related functions
 void load_textures(void); //load all the game textures
+void unload_textures(void); //unload all the game textures
 
 //binaries related functions
 void bin_to_top_players(void); //reads a binary file containing the top players information
@@ -92,8 +95,8 @@ int main_menu_display(void); //displays the main menu with the options: PLAY, LE
 void leaderboard_display(void); //displays the leaderboard (the top5 players)
 
 //pause menu related functions
-void pause(void); //verifies if the game can be paused and calls pause_display() when P is pressed
-int pause_display(void); //displays the pause menu with the options: RESUME and MAIN MENU
+void pause(Camera2D player_camera); //verifies if the game can be paused and calls pause_display() when P is pressed
+int pause_display(Camera2D player_camera); //displays the pause menu with the options: RESUME and MAIN MENU
 
 //gaming related functions
 void gaming_test(Camera2D *player_camera);
@@ -110,7 +113,6 @@ void camera_update(Camera2D *camera);
 int main(void) {
     //functions to initialize the arrays with the files
     bin_to_top_players(); //top players initialization
-    init_player_map(); //initializes the player and the map matrix
     
     //initializes the game window
     InitWindow(SCREENWIDTH, SCREENHEIGHT, "INFman");
@@ -118,8 +120,8 @@ int main(void) {
     //dynamic camera initialization
     Camera2D camera = {0};
     camera.target.y = MAPHEIGHT;
-    camera.offset = (Vector2){ SCREENWIDTH / 6.0f, 0};
-    camera.zoom = 3.2f;
+    camera.offset = (Vector2){SCREENWIDTH / 6.0f, 0};
+    camera.zoom = DEFAULTZOOM;
     
     //initializes the audio devide (if using -> FIX THE XCODE SOUND ISSUE)
     InitAudioDevice();
@@ -137,14 +139,13 @@ int main(void) {
     
     while (!WindowShouldClose() && do_not_exit) {
         main_menu_test();
-        pause();
+        pause(camera);
         gaming_test(&camera);
-        printf("x = %f | y = %f\n", player.position.x, player.position.y);
+        //printf("x = %f | y = %f\n", player.position.x, player.position.y);
     }
     
     //textures unloading
-    UnloadTexture(resume_texture);
-    UnloadTexture(main_menu_texture);
+    unload_textures();
     
     //closes the audio device
     CloseAudioDevice();
@@ -155,17 +156,17 @@ int main(void) {
     return 0;
 }
 
-void pause(void) {
+void pause(Camera2D player_camera) {
     //tests if the pause menu must open
     if (IsKeyPressed(KEY_P) && !current_screen)
         current_screen = 1;
 
     if (current_screen == 1)
-        current_screen = pause_display();
+        current_screen = pause_display(player_camera);
 }
 
-int pause_display(void) {
- 
+int pause_display(Camera2D player_camera) {
+    
     int option = 1; //the "current_screen" value, changed by the player's action
     int resume_hovering, main_menu_hovering; //hovering variables
     
@@ -173,12 +174,18 @@ int pause_display(void) {
     Vector2 mouse_pointer = {0.0f, 0.0f};
     
     //build the rectangles representing the buttons logically
-    Rectangle resume = {SCREENWIDTH/2 - BUTTONWIDTH/2, SCREENHEIGHT/2 - SCREENHEIGHT/12, BUTTONWIDTH, BUTTONHEIGHT};
-    Rectangle main_menu = {SCREENWIDTH/2 - BUTTONWIDTH/2, SCREENHEIGHT/2 + SCREENHEIGHT/12, BUTTONWIDTH, BUTTONHEIGHT};
+    Rectangle resume = {player.position.x + SCREENWIDTH/12, MAPHEIGHT*TILESIZE/2 - BUTTONHEIGHT/2/20, BUTTONWIDTH/DEFAULTZOOM, BUTTONHEIGHT/DEFAULTZOOM};
+    Rectangle main_menu = {player.position.x + SCREENWIDTH/12, MAPHEIGHT*TILESIZE/2 + BUTTONHEIGHT/2, BUTTONWIDTH/DEFAULTZOOM, BUTTONHEIGHT/DEFAULTZOOM};
+    
+    //declaring the variables to store the position of the text drawn in the buttons
+    Vector2 resume_text_position = {resume.x + 27.5/DEFAULTZOOM, resume.y + 25/DEFAULTZOOM};
+    Vector2 main_menu_text_position = {main_menu.x + 10/DEFAULTZOOM, main_menu.y + 25/DEFAULTZOOM};
     
     //pause menu loop that waits for the player's action
     while (option == 1) {
         mouse_pointer = GetMousePosition();
+        //automatic adjust to the mouse pointer, using the camera mode
+        mouse_pointer = GetScreenToWorld2D(GetMousePosition(), player_camera);
         resume_hovering = 0;
         main_menu_hovering = 0;
         
@@ -200,6 +207,8 @@ int pause_display(void) {
         
         ClearBackground(RAYWHITE);
         
+        BeginMode2D(player_camera);
+        
         draw_background(DARKGRAY);
         
         draw_map(DARKGRAY);
@@ -217,8 +226,13 @@ int pause_display(void) {
             DrawTexture(main_menu_texture, main_menu.x, main_menu.y, WHITE);
             
         //add text labels for the buttons
-        DrawText("RESUME", resume.x + 30, resume.y + 20, FONTSIZE, BLACK);
-        DrawText("MAIN MENU", main_menu.x + 15, main_menu.y + 25, FONTSIZE, BLACK);
+        DrawTextEx(GetFontDefault(), "RESUME", resume_text_position, FONTSIZE/DEFAULTZOOM, 1, BLACK);
+        
+        DrawTextEx(GetFontDefault(), "MAIN MENU", main_menu_text_position, FONTSIZE/DEFAULTZOOM, 1, BLACK);
+        
+        //NOTE: DrawTextEx must be used here bc DrawText smallest font would be larger than preferred
+        
+        EndMode2D();
         
         EndDrawing();
         
@@ -333,9 +347,9 @@ void leaderboard_display(void) {
         ClearBackground(RAYWHITE);
         
         if (hovering == 1)
-            DrawTexture(main_menu_texture, main_menu.x, main_menu.y, GRAY);
+            DrawTexture(leaderboard_main_menu_texture, main_menu.x, main_menu.y, GRAY);
         else
-            DrawTexture(main_menu_texture, main_menu.x, main_menu.y, WHITE);
+            DrawTexture(leaderboard_main_menu_texture, main_menu.x, main_menu.y, WHITE);
         
         //draws the leaderboard itself
         DrawTexture(leaderboard_table_texture, leaderboard_table.x, leaderboard_table.y, WHITE);
@@ -441,16 +455,8 @@ void init_player_map(void) {
 }
 
 void load_textures(void) {
-    background_texture = LoadTexture("/Users/melch/Desktop/projetos/projetos_faculdade/infman/resources/map/background.png");
     
-    Image blueImage = GenImageColor(BUTTONWIDTH, BUTTONHEIGHT, BLUE);
-    resume_texture = LoadTextureFromImage(blueImage);
-    UnloadImage(blueImage);
-
-    Image greenImage = GenImageColor(BUTTONWIDTH, BUTTONHEIGHT, GREEN);
-    main_menu_texture = LoadTextureFromImage(greenImage);
-    UnloadImage(greenImage);
-    
+    //main menu textures
     Image redImage = GenImageColor(BUTTONWIDTH, BUTTONHEIGHT, RED);
     play_texture = LoadTextureFromImage(redImage);
     UnloadImage(redImage);
@@ -467,17 +473,53 @@ void load_textures(void) {
     leaderboard_table_texture = LoadTextureFromImage(violetImage);
     UnloadImage(violetImage);
     
+    Image greenImage1 = GenImageColor(BUTTONWIDTH, BUTTONHEIGHT, GREEN);
+    leaderboard_main_menu_texture = LoadTextureFromImage(greenImage1);
+    UnloadImage(greenImage1);
+    
+    //pause menu textures
+    Image blueImage = GenImageColor(BUTTONWIDTH/DEFAULTZOOM, BUTTONHEIGHT/DEFAULTZOOM, BLUE);
+    resume_texture = LoadTextureFromImage(blueImage);
+    UnloadImage(blueImage);
+
+    Image greenImage = GenImageColor(BUTTONWIDTH/DEFAULTZOOM, BUTTONHEIGHT/DEFAULTZOOM, GREEN);
+    main_menu_texture = LoadTextureFromImage(greenImage);
+    UnloadImage(greenImage);
+    
+    //gaming textures
+    background_texture = LoadTexture("/Users/melch/Desktop/projetos/projetos_faculdade/infman/resources/map/background.png");
+    
     floor_texture = LoadTexture("/Users/melch/Desktop/projetos/projetos_faculdade/infman/resources/map/tile1.png");
     
     obstacle_texture = LoadTexture("/Users/melch/Desktop/projetos/projetos_faculdade/infman/resources/map/spike.png");
     
-    Image beigeImage = GenImageColor(PLAYERSIZE, PLAYERSIZE, BEIGE);
-    player_texture = LoadTextureFromImage(beigeImage);
-    UnloadImage(beigeImage);
-    
     Image darkPurpleImage = GenImageColor(PLAYERSIZE, PLAYERSIZE, DARKPURPLE);
     enemy_texture = LoadTextureFromImage(darkPurpleImage);
     UnloadImage(darkPurpleImage);
+    
+    Image beigeImage = GenImageColor(PLAYERSIZE, PLAYERSIZE, BEIGE);
+    player_texture = LoadTextureFromImage(beigeImage);
+    UnloadImage(beigeImage);
+}
+
+void unload_textures(void) {
+    //main menu textures
+    UnloadTexture(player_texture);
+    UnloadTexture(leaderboard_texture);
+    UnloadTexture(exit_texture);
+    UnloadTexture(leaderboard_table_texture);
+    UnloadTexture(leaderboard_main_menu_texture);
+    
+    //pause menu textures
+    UnloadTexture(resume_texture);
+    UnloadTexture(main_menu_texture);
+    
+    //gaming textures
+    UnloadTexture(background_texture);
+    UnloadTexture(floor_texture);
+    UnloadTexture(obstacle_texture);
+    UnloadTexture(enemy_texture);
+    UnloadTexture(player_texture);
 }
 
 void draw_background(Color filter) {
@@ -620,3 +662,5 @@ void camera_update(Camera2D *camera) {
         camera->target.x = player.position.x;
     }
 }
+
+

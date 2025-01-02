@@ -12,13 +12,13 @@
 					<key>EndingColumnNumber</key>
 					<string>0</string>
 					<key>EndingLineNumber</key>
-					<string>372</string>
+					<string>378</string>
 					<key>StartingColumnNumber</key>
 					<string>0</string>
 					<key>StartingLineNumber</key>
-					<string>371</string>
+					<string>377</string>
 					<key>Timestamp</key>
-					<string>757516901.531806</string>
+					<string>757520138.335965</string>
 				</dict>
 				<key>rebasable-url</key>
 				<dict>
@@ -34,16 +34,16 @@
 			<key>text-context</key>
 			<dict>
 				<key>focused</key>
-				<string>Vector2 txt_to_map(void) {
+				<string>    if ((fileptr = fopen("/Users/melch/Desktop/Projetos/projetos_faculdade/infman/infman/bin/top_scores.bin", "r+")) != NULL) {
 </string>
 				<key>leading</key>
-				<string>}
-
+				<string>    FILE *fileptr;
+    
 </string>
 				<key>trailing</key>
-				<string>    int player_exists = 0;
-    char read;
-    FILE *fileptr;
+				<string>        fread(top_players, sizeof(PLAYER_ON_TOP), TOPLAYERS, fileptr);
+    } else
+        do_not_exit = 0;
 </string>
 			</dict>
 			<key>title</key>
