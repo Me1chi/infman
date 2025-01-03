@@ -8,6 +8,7 @@
 #include <stdio.h>
 #include <time.h>
 #include <math.h>
+#include <stdlib.h>
 
 #define SCREENWIDTH 1200.0
 #define SCREENHEIGHT 600.0
@@ -15,16 +16,21 @@
 #define BUTTONHEIGHT 75.0
 #define MAPLENGTH 100
 #define MAPHEIGHT 10
+#define ENEMIES 5
 #define PLAYERSIZE 16
-#define PLAYERAMMO1 16
+#define ENEMYSIZE1 16
+#define PLAYERAMMO1 17
 #define PLAYERAMMO2 5
 #define PLAYERHEARTS 3
-#define JUMPSPEED 3.0
+#define JUMPSPEED 2.5
 #define GRAVITY 0.1
 #define WALKSPEED 2.0
 #define TILESIZE 16
 #define FONTSIZE 20.0
 #define TOPLAYERS 10
+#define MAXPROJECTILES 96
+#define LASERPROJECTILESPEED 3.0
+#define PROJECTILESIZE 8
 #define MAXNAME 9
 #define DEFAULTZOOM 3.2
 #define INFMANBLUE1 (Color){0, 136, 252, 255}
@@ -51,11 +57,33 @@ typedef struct {
     bool blocked_left;
 } PLAYER;
 
+typedef struct {
+    //vector quantities
+    Vector2 position;
+    Vector2 speed;
+    
+    //scalar quantities
+    int hearts;
+    
+    //state testing
+    bool blocked_left;
+    bool blocked_right;
+    bool shooting;
+} ENEMY;
+
+typedef struct {
+    Rectangle bullet;
+    Color bullet_type;
+    int direction;
+    
+} PROJECTILE;
+
 //this type is meant to be used in the top 10 ranking
 typedef struct {
     char name[MAXNAME + 1]; //the + 1 comes from the NULL character
     int score;
 } PLAYER_ON_TOP;
+
 
 //global variables
 int current_screen = 2; //0 for gaming, 1 to pause and 2 to main_menu --> may be initialized as 2!
@@ -63,6 +91,10 @@ int do_not_exit = 1; //defined as 1, must only be modified by the main menu EXIT
 PLAYER_ON_TOP top_players[TOPLAYERS]; //array containing the top players, filled by the reading of top_scores.bin
 char map[MAPHEIGHT][MAPLENGTH]; //matrix containing the map description, filled by the reading of terrain.txt
 PLAYER player;
+ENEMY enemies[ENEMIES];
+int enemies_counter;
+PROJECTILE laser_projectiles[MAXPROJECTILES] = {0};
+int laser_projectiles_counter;
 
 //declares the global textures for the main menu
 Texture2D play_texture;
@@ -120,6 +152,8 @@ void player_death(Camera2D player_camera);
 void player_win(void);
 void player_damage(void);
 void draw_player_hearts(int hearts, Camera2D *player_camera);
+void laser_shoot(void);
+bool projectile_enemy_hit_test(PROJECTILE projectile, ENEMY enemy);
 
 //main function
 int main(void) {
@@ -148,6 +182,11 @@ int main(void) {
     
     //defines as 60 the target fps
     SetTargetFPS(60);
+    
+    //random seed initialization
+    long current_time = time(NULL);
+    unsigned int current_time_reduced = (unsigned int)current_time;
+    srand(current_time_reduced);
     
     while (!WindowShouldClose() && do_not_exit) {
         main_menu_test();
@@ -464,6 +503,8 @@ void init_player_map(void) {
     player.blocked_right = 0;
     player.on_floor = 0;
     player.on_ceiling = 0;
+    
+    laser_projectiles_counter = 0;
 }
 
 void load_textures(void) {
@@ -667,6 +708,8 @@ int gaming(Camera2D *player_camera) {
     
     draw_player_hearts(player.hearts, player_camera);
     
+    laser_shoot();
+    
     EndMode2D();
     
     EndDrawing();
@@ -736,7 +779,7 @@ void player_death(Camera2D player_camera) {
         
         EndMode2D();
         
-        DrawTextEx(GetFontDefault(), "YOU DIED", (Vector2) {12*SCREENWIDTH/31, SCREENHEIGHT/10}, 3*FONTSIZE, FONTSIZE/4, RED);
+        DrawTextEx(GetFontDefault(), "YOU DIED", (Vector2) {12*SCREENWIDTH/33, SCREENHEIGHT/10}, 3*FONTSIZE, FONTSIZE/4, RED);
 
         DrawTextEx(GetFontDefault(), "SCORE: ", (Vector2){3*SCREENWIDTH/8, SCREENHEIGHT/3}, 3*FONTSIZE, FONTSIZE/4, INFMANBLUE1);
         
@@ -766,3 +809,45 @@ void draw_player_hearts(int hearts, Camera2D *player_camera) {
     
     BeginMode2D(*player_camera);
 }
+
+void laser_shoot(void) {
+    if (player.ammo_laser > 0 && IsKeyPressed(KEY_E)) {
+        int current_direction;
+        
+        if (laser_projectiles_counter >= MAXPROJECTILES)
+            laser_projectiles_counter = 0;
+        
+        if (player.speed.x == 0)
+            current_direction = 1;
+        else
+            current_direction = player.speed.x/fabsf(player.speed.x);
+        
+        Rectangle current_bullet = {player.position.x + PLAYERSIZE, player.position.y + PLAYERSIZE/2, PROJECTILESIZE, PROJECTILESIZE/2};
+        
+        laser_projectiles[laser_projectiles_counter] = (PROJECTILE){current_bullet, YELLOW, current_direction};
+        
+        laser_projectiles_counter++;
+        player.ammo_laser--;
+    }
+    
+    for (int i = 0; i < MAXPROJECTILES; i++) {
+        laser_projectiles[i].bullet.x += LASERPROJECTILESPEED*laser_projectiles[i].direction;
+        
+        DrawRectangle(laser_projectiles[i].bullet.x, laser_projectiles[i].bullet.y, PROJECTILESIZE, PROJECTILESIZE/2, laser_projectiles[i].bullet_type);
+        
+        for (int j = 0; j < ENEMIES; j++) {
+            if (projectile_enemy_hit_test(laser_projectiles[i], enemies[j])) {
+                laser_projectiles[i].bullet.x = MAPLENGTH + SCREENWIDTH;
+                enemies[j].hearts--;
+            }
+        }
+    }
+}
+
+bool projectile_enemy_hit_test(PROJECTILE projectile, ENEMY enemy) {
+    Rectangle enemy_rectangle = {enemy.position.x, enemy.position.y, ENEMYSIZE1, ENEMYSIZE1};
+    
+    return CheckCollisionRecs(projectile.bullet, enemy_rectangle);;
+}
+
+

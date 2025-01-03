@@ -12,13 +12,13 @@
 					<key>EndingColumnNumber</key>
 					<string>0</string>
 					<key>EndingLineNumber</key>
-					<string>390</string>
+					<string>429</string>
 					<key>StartingColumnNumber</key>
 					<string>0</string>
 					<key>StartingLineNumber</key>
-					<string>389</string>
+					<string>428</string>
 					<key>Timestamp</key>
-					<string>757540267.31784</string>
+					<string>757620396.516366</string>
 				</dict>
 				<key>rebasable-url</key>
 				<dict>
@@ -48,6 +48,53 @@
 			</dict>
 			<key>title</key>
 			<string>CHANGE FROM ABSOLUTE TO RELATIVE PATH</string>
+			<key>type</key>
+			<string>bookmark</string>
+		</dict>
+		<dict>
+			<key>destination</key>
+			<dict>
+				<key>location-parameters</key>
+				<dict>
+					<key>EndingColumnNumber</key>
+					<string>0</string>
+					<key>EndingLineNumber</key>
+					<string>825</string>
+					<key>StartingColumnNumber</key>
+					<string>0</string>
+					<key>StartingLineNumber</key>
+					<string>824</string>
+					<key>Timestamp</key>
+					<string>757620396.5164109</string>
+				</dict>
+				<key>rebasable-url</key>
+				<dict>
+					<key>base</key>
+					<string>workspace</string>
+					<key>payload</key>
+					<dict>
+						<key>relative-path</key>
+						<string>infman/main.c</string>
+					</dict>
+				</dict>
+			</dict>
+			<key>text-context</key>
+			<dict>
+				<key>focused</key>
+				<string>        Rectangle current_bullet = {player.position.x + PLAYERSIZE, player.position.y + PLAYERSIZE/2, PROJECTILESIZE, PROJECTILESIZE/2};
+</string>
+				<key>leading</key>
+				<string>            current_direction = player.speed.x/fabsf(player.speed.x);
+        
+</string>
+				<key>trailing</key>
+				<string>        
+        laser_projectiles[laser_projectiles_counter] = (PROJECTILE){current_bullet, YELLOW, current_direction};
+        
+</string>
+			</dict>
+			<key>title</key>
+			<string>NEED TO SUM THE DISTANCE Y DISTANCE BETWEEN THE TOP OF THE PLAYER AND THE GUN BARREL</string>
 			<key>type</key>
 			<string>bookmark</string>
 		</dict>
