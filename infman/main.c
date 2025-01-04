@@ -578,13 +578,9 @@ void load_textures(void) {
     UnloadImage(greenImage1);
     
     //pause menu textures
-    Image blueImage = GenImageColor(BUTTONWIDTH/DEFAULTZOOM, BUTTONHEIGHT/DEFAULTZOOM, BLUE);
-    resume_texture = LoadTextureFromImage(blueImage);
-    UnloadImage(blueImage);
-
-    Image greenImage = GenImageColor(BUTTONWIDTH/DEFAULTZOOM, BUTTONHEIGHT/DEFAULTZOOM, GREEN);
-    main_menu_texture = LoadTextureFromImage(greenImage);
-    UnloadImage(greenImage);
+    resume_texture = LoadTexture("/Users/melch/Desktop/Projetos/projetos_faculdade/infman/resources/map/button1.png");
+    
+    main_menu_texture = LoadTexture("/Users/melch/Desktop/Projetos/projetos_faculdade/infman/resources/map/button1.png");
     
     //gaming textures
     background_texture = LoadTexture("/Users/melch/Desktop/projetos/projetos_faculdade/infman/resources/map/background.png");
