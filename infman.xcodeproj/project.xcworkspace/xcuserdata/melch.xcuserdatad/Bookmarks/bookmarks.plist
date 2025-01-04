@@ -12,13 +12,13 @@
 					<key>EndingColumnNumber</key>
 					<string>0</string>
 					<key>EndingLineNumber</key>
-					<string>429</string>
+					<string>451</string>
 					<key>StartingColumnNumber</key>
 					<string>0</string>
 					<key>StartingLineNumber</key>
-					<string>428</string>
+					<string>450</string>
 					<key>Timestamp</key>
-					<string>757620396.516366</string>
+					<string>757651636.414835</string>
 				</dict>
 				<key>rebasable-url</key>
 				<dict>
@@ -59,13 +59,13 @@
 					<key>EndingColumnNumber</key>
 					<string>0</string>
 					<key>EndingLineNumber</key>
-					<string>825</string>
+					<string>887</string>
 					<key>StartingColumnNumber</key>
 					<string>0</string>
 					<key>StartingLineNumber</key>
-					<string>824</string>
+					<string>886</string>
 					<key>Timestamp</key>
-					<string>757620396.5164109</string>
+					<string>757653202.472247</string>
 				</dict>
 				<key>rebasable-url</key>
 				<dict>
@@ -89,7 +89,7 @@
 </string>
 				<key>trailing</key>
 				<string>        
-        laser_projectiles[laser_projectiles_counter] = (PROJECTILE){current_bullet, YELLOW, current_direction};
+        laser_projectiles[laser_projectiles_counter] = (PROJECTILE){current_bullet, current_direction, 0};
         
 </string>
 			</dict>

@@ -10,31 +10,45 @@
 #include <math.h>
 #include <stdlib.h>
 
+//screen, menus & button macros
 #define SCREENWIDTH 1200.0
 #define SCREENHEIGHT 600.0
 #define BUTTONWIDTH 150.0
 #define BUTTONHEIGHT 75.0
+#define FONTSIZE 20.0
+#define TOPLAYERS 10
+#define MAXNAME 9
+#define DEFAULTZOOM 3.2
+
+//color macros
+#define INFMANBLUE1 (Color){0, 136, 252, 255}
+#define INFMANBLUE2 (Color){1, 248, 252, 255}
+
+//map macros
 #define MAPLENGTH 100
 #define MAPHEIGHT 10
-#define ENEMIES 5
+#define TILESIZE 16
+
+//player macros
 #define PLAYERSIZE 16
-#define ENEMYSIZE1 16
 #define PLAYERAMMO1 17
 #define PLAYERAMMO2 5
 #define PLAYERHEARTS 3
+#define WALKSPEED 2.0
 #define JUMPSPEED 2.5
 #define GRAVITY 0.1
-#define WALKSPEED 2.0
-#define TILESIZE 16
-#define FONTSIZE 20.0
-#define TOPLAYERS 10
+#define INVINCIBILITYTIME 1.0
+
+//enemy macros
+#define ENEMIES 5
+#define ENEMYSIZE1 16
+#define ENEMYMINSPEED 0.2
+#define ENEMYMAXSPEED 1.0
+
+//projectile macros
 #define MAXPROJECTILES 96
-#define LASERPROJECTILESPEED 3.0
 #define PROJECTILESIZE 8
-#define MAXNAME 9
-#define DEFAULTZOOM 3.2
-#define INFMANBLUE1 (Color){0, 136, 252, 255}
-#define INFMANBLUE2 (Color){1, 248, 252, 255}
+#define LASERPROJECTILESPEED 3.0
 
 typedef struct {
     //vector quantities
@@ -55,11 +69,12 @@ typedef struct {
     bool on_ceiling;
     bool blocked_right;
     bool blocked_left;
+    bool vulnerable;
 } PLAYER;
 
 typedef struct {
     //vector quantities
-    Vector2 position;
+    Rectangle position_size;
     Vector2 speed;
     
     //scalar quantities
@@ -73,8 +88,8 @@ typedef struct {
 
 typedef struct {
     Rectangle bullet;
-    Color bullet_type;
     int direction;
+    int projectile_type; //0 for laser, 1 for bazooka and so on...
     
 } PROJECTILE;
 
@@ -88,13 +103,14 @@ typedef struct {
 //global variables
 int current_screen = 2; //0 for gaming, 1 to pause and 2 to main_menu --> may be initialized as 2!
 int do_not_exit = 1; //defined as 1, must only be modified by the main menu EXIT button or the ERROR HANDLING functions!!
+float invincibility_timer = 0;
 PLAYER_ON_TOP top_players[TOPLAYERS]; //array containing the top players, filled by the reading of top_scores.bin
 char map[MAPHEIGHT][MAPLENGTH]; //matrix containing the map description, filled by the reading of terrain.txt
-PLAYER player;
-ENEMY enemies[ENEMIES];
+ENEMY enemies[ENEMIES] = {0};
 int enemies_counter;
 PROJECTILE laser_projectiles[MAXPROJECTILES] = {0};
 int laser_projectiles_counter;
+PLAYER player;
 
 //declares the global textures for the main menu
 Texture2D play_texture;
@@ -114,6 +130,7 @@ Texture2D obstacle_texture;
 Texture2D enemy_texture;
 Texture2D player_texture;
 Texture2D player_heart_texture;
+Texture2D laser_bullet_texture;
 
 //functions declarations (organized)
 
@@ -150,10 +167,13 @@ void camera_update(Camera2D *camera);
 void player_death_test(Camera2D player_camera);
 void player_death(Camera2D player_camera);
 void player_win(void);
-void player_damage(void);
+void player_damage(char source);
 void draw_player_hearts(int hearts, Camera2D *player_camera);
 void laser_shoot(void);
 bool projectile_enemy_hit_test(PROJECTILE projectile, ENEMY enemy);
+void draw_projectiles(PROJECTILE projectile_array[], Color filter);
+void vulnerability_update(void);
+void spike_damage(void);
 
 //main function
 int main(void) {
@@ -263,6 +283,8 @@ int pause_display(Camera2D player_camera) {
         draw_background(DARKGRAY);
         
         draw_map(DARKGRAY);
+        
+        draw_projectiles(laser_projectiles, DARKGRAY);
         
         //draw resume buttons
         if (resume_hovering == 1)
@@ -439,6 +461,7 @@ Vector2 txt_to_map(void) {
     char read;
     FILE *fileptr;
     Vector2 player_position = {0, 0};
+    enemies_counter = 0;
     
     if ((fileptr = fopen("/Users/melch/Desktop/Projetos/projetos_faculdade/infman/resources/map/terrain.txt", "r")) != NULL) {
         for (int i = 0; i < MAPHEIGHT; i++) {
@@ -446,6 +469,10 @@ Vector2 txt_to_map(void) {
                 fscanf(fileptr, "%c", &read);
                 if (read == '\n')
                     fscanf(fileptr, "%c", &read);
+                else if (read == 'M') {
+                    enemies[enemies_counter].position_size = (Rectangle){j*TILESIZE, i*TILESIZE, ENEMYSIZE1, ENEMYSIZE1};
+                    enemies_counter++;
+                }
                 else if (read == 'P') {
                     player_position = (Vector2){j*TILESIZE, i*TILESIZE};
                     player_exists = 1;
@@ -460,12 +487,16 @@ Vector2 txt_to_map(void) {
     if (!player_exists)
         do_not_exit = 0;
     
+    if (enemies_counter != ENEMIES)
+        do_not_exit = 0;
+    
     return player_position;
 }
 
 void draw_map(Color filter) {
     
     Vector2 drawing_position;
+    enemies_counter = 0;
     
     for (int i = 0; i < MAPHEIGHT; i++) {
         for (int j = 0; j < MAPLENGTH; j++) {
@@ -478,11 +509,11 @@ void draw_map(Color filter) {
                     DrawTextureV(obstacle_texture, drawing_position, filter);
                     break;
                 case 'M': //draw the enemies
-                    DrawTextureV(enemy_texture, drawing_position, filter);
+                    DrawTexture(enemy_texture, enemies[enemies_counter].position_size.x, enemies[enemies_counter].position_size.y, filter);
+                    enemies_counter++;
                     break;
                 case 'P': //draw the player
                     DrawTextureV(player_texture, player.position, filter);
-                    //DrawTexture(player_texture, player.position.x - 8, player.position.y - 8, filter);
                     break;
             }
         }
@@ -490,6 +521,7 @@ void draw_map(Color filter) {
 }
 
 void init_player_map(void) {
+    //player attributes
     player.hearts = PLAYERHEARTS;
     player.size = (Vector2){PLAYERSIZE, PLAYERSIZE};
     player.speed = (Vector2){0, 0};
@@ -503,8 +535,23 @@ void init_player_map(void) {
     player.blocked_right = 0;
     player.on_floor = 0;
     player.on_ceiling = 0;
+    player.vulnerable = 0;
+    invincibility_timer = 0;
     
+    //projectiles attributes
+    for (int i = 0; i < MAXPROJECTILES; i++)
+        laser_projectiles[i].bullet.y = -SCREENHEIGHT;
     laser_projectiles_counter = 0;
+    
+    //enemies attributes
+    for (int i = 0; i < ENEMIES; i++) {
+        enemies[i].speed.x = (float)(ENEMYMINSPEED*10) + (rand() % (int)(ENEMYMAXSPEED*10 - ENEMYMINSPEED*10 + 1));
+        enemies[i].speed.y = 0.0;
+        enemies[i].hearts = 2;
+        enemies[i].blocked_left = 0;
+        enemies[i].blocked_right = 0;
+        enemies[i].shooting = 0;
+    }
 }
 
 void load_textures(void) {
@@ -555,6 +602,8 @@ void load_textures(void) {
     UnloadImage(beigeImage);
     
     player_heart_texture = LoadTexture("/Users/melch/Desktop/Projetos/projetos_faculdade/infman/resources/player/inf_man-heart.png");
+    
+    laser_bullet_texture = LoadTexture("/Users/melch/Desktop/Projetos/projetos_faculdade/infman/resources/player/player_laser_bullet.png");
 }
 
 void unload_textures(void) {
@@ -576,6 +625,7 @@ void unload_textures(void) {
     UnloadTexture(enemy_texture);
     UnloadTexture(player_texture);
     UnloadTexture(player_heart_texture);
+    UnloadTexture(laser_bullet_texture);
 }
 
 void draw_background(Color filter) {
@@ -706,6 +756,8 @@ int gaming(Camera2D *player_camera) {
     
     draw_map(WHITE);
     
+    draw_projectiles(laser_projectiles, WHITE);
+    
     draw_player_hearts(player.hearts, player_camera);
     
     laser_shoot();
@@ -719,6 +771,10 @@ int gaming(Camera2D *player_camera) {
     camera_update(player_camera);
     
     player_death_test(*player_camera);
+    
+    spike_damage();
+    
+    vulnerability_update();
     
     return 0;
 }
@@ -793,8 +849,14 @@ void player_win(void) {
     
 }
 
-void player_damage(void) {
+void player_damage(char source) {
+    switch (source) {
+        case 'S':
+            player.hearts--;
+            break;
+    }
     
+    player.vulnerable = 0;
 }
 
 void draw_player_hearts(int hearts, Camera2D *player_camera) {
@@ -824,7 +886,7 @@ void laser_shoot(void) {
         
         Rectangle current_bullet = {player.position.x + PLAYERSIZE, player.position.y + PLAYERSIZE/2, PROJECTILESIZE, PROJECTILESIZE/2};
         
-        laser_projectiles[laser_projectiles_counter] = (PROJECTILE){current_bullet, YELLOW, current_direction};
+        laser_projectiles[laser_projectiles_counter] = (PROJECTILE){current_bullet, current_direction, 0};
         
         laser_projectiles_counter++;
         player.ammo_laser--;
@@ -833,11 +895,9 @@ void laser_shoot(void) {
     for (int i = 0; i < MAXPROJECTILES; i++) {
         laser_projectiles[i].bullet.x += LASERPROJECTILESPEED*laser_projectiles[i].direction;
         
-        DrawRectangle(laser_projectiles[i].bullet.x, laser_projectiles[i].bullet.y, PROJECTILESIZE, PROJECTILESIZE/2, laser_projectiles[i].bullet_type);
-        
         for (int j = 0; j < ENEMIES; j++) {
             if (projectile_enemy_hit_test(laser_projectiles[i], enemies[j])) {
-                laser_projectiles[i].bullet.x = MAPLENGTH + SCREENWIDTH;
+                laser_projectiles[i].bullet.y = -SCREENHEIGHT;
                 enemies[j].hearts--;
             }
         }
@@ -845,9 +905,39 @@ void laser_shoot(void) {
 }
 
 bool projectile_enemy_hit_test(PROJECTILE projectile, ENEMY enemy) {
-    Rectangle enemy_rectangle = {enemy.position.x, enemy.position.y, ENEMYSIZE1, ENEMYSIZE1};
-    
-    return CheckCollisionRecs(projectile.bullet, enemy_rectangle);;
+    return CheckCollisionRecs(projectile.bullet, enemy.position_size);;
 }
 
+void draw_projectiles(PROJECTILE projectile_array[], Color filter) {
+    if (projectile_array[0].projectile_type == 0) {
+        for (int i = 0; i < MAXPROJECTILES; i++) {
+            if (projectile_array[i].direction == 1)
+                DrawTextureRec(laser_bullet_texture, (Rectangle){0,0,PROJECTILESIZE, PROJECTILESIZE/2}, (Vector2) {projectile_array[i].bullet.x, projectile_array[i].bullet.y}, filter);
+            else if (projectile_array[i].direction == -1)
+                DrawTextureRec(laser_bullet_texture, (Rectangle){8,0,PROJECTILESIZE, PROJECTILESIZE/2}, (Vector2) {projectile_array[i].bullet.x, projectile_array[i].bullet.y}, filter);
+        }
+    }
+}
 
+void spike_damage(void) {
+    if (player.vulnerable) {
+        int horizontal_tile = floorf((player.position.x)/TILESIZE);
+        int horizontal_tile2 = floorf((player.position.x + PLAYERSIZE/2)/TILESIZE);
+        int vertical_tile = floorf((player.position.y + PLAYERSIZE)/TILESIZE);
+        
+        if (map[vertical_tile][horizontal_tile] == 'S' || map[vertical_tile][horizontal_tile2] == 'S' || map[vertical_tile - 1][horizontal_tile] == 'S' || map[vertical_tile - 1][horizontal_tile2] == 'S') {
+            player_jump(1.2);
+            player_damage('S');
+        }
+    }
+}
+
+void vulnerability_update(void) {
+    if (invincibility_timer >= INVINCIBILITYTIME) {
+        player.vulnerable = 1;
+        invincibility_timer = 0;
+    } else if (!player.vulnerable) {
+        invincibility_timer += GetFrameTime();
+    } else
+        invincibility_timer = 0.0f;
+}
