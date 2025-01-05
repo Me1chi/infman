@@ -28,6 +28,7 @@
 #define MAPLENGTH 100
 #define MAPHEIGHT 10
 #define TILESIZE 16
+#define CIRCUITPARTS 20
 
 //player macros
 #define PLAYERSIZE 16
@@ -42,8 +43,9 @@
 //enemy macros
 #define ENEMIES 5
 #define ENEMYSIZE1 16
-#define ENEMYMINSPEED 0.2
-#define ENEMYMAXSPEED 1.0
+#define ENEMYMINSPEED 0.1
+#define ENEMYMAXSPEED 0.5
+#define ENEMYMAXMOVERANGE 4
 
 //projectile macros
 #define MAXPROJECTILES 96
@@ -70,33 +72,46 @@ typedef struct {
     bool blocked_right;
     bool blocked_left;
     bool vulnerable;
+    
 } PLAYER;
 
 typedef struct {
     //vector quantities
     Rectangle position_size;
     Vector2 speed;
+    Vector2 pivot;
     
     //scalar quantities
     int hearts;
+    int movement_range;
     
     //state testing
     bool blocked_left;
     bool blocked_right;
     bool shooting;
+    bool alive;
+    
 } ENEMY;
 
 typedef struct {
     Rectangle bullet;
     int direction;
-    int projectile_type; //0 for laser, 1 for bazooka and so on...
+    int projectile_type; //0 for laser, 1 for bazooka, 2 for enemy shot and so on...
     
 } PROJECTILE;
+
+typedef struct {
+    Vector2 position;
+    int drop_type; //0 for heart, 1 for circuit part and so on...
+    int state; //0 for unavailable, 1 for available, 2 for took
+    
+} DROP;
 
 //this type is meant to be used in the top 10 ranking
 typedef struct {
     char name[MAXNAME + 1]; //the + 1 comes from the NULL character
     int score;
+    
 } PLAYER_ON_TOP;
 
 
@@ -110,6 +125,7 @@ ENEMY enemies[ENEMIES] = {0};
 int enemies_counter;
 PROJECTILE laser_projectiles[MAXPROJECTILES] = {0};
 int laser_projectiles_counter;
+DROP hearts[ENEMIES] = {0};
 PLAYER player;
 
 //declares the global textures for the main menu
@@ -174,6 +190,7 @@ bool projectile_enemy_hit_test(PROJECTILE projectile, ENEMY enemy);
 void draw_projectiles(PROJECTILE projectile_array[], Color filter);
 void vulnerability_update(void);
 void spike_damage(void);
+void enemy_movement(void);
 
 //main function
 int main(void) {
@@ -249,8 +266,8 @@ int pause_display(Camera2D player_camera) {
     Rectangle main_menu = {player.position.x + SCREENWIDTH/12, MAPHEIGHT*TILESIZE/2 + BUTTONHEIGHT/2, BUTTONWIDTH/DEFAULTZOOM, BUTTONHEIGHT/DEFAULTZOOM};
     
     //declaring the variables to store the position of the text drawn in the buttons
-    Vector2 resume_text_position = {resume.x + 27.5/DEFAULTZOOM, resume.y + 25/DEFAULTZOOM};
-    Vector2 main_menu_text_position = {main_menu.x + 10/DEFAULTZOOM, main_menu.y + 25/DEFAULTZOOM};
+    Vector2 resume_text_position = {resume.x + 32.5/DEFAULTZOOM, resume.y + 29/DEFAULTZOOM};
+    Vector2 main_menu_text_position = {main_menu.x + 16/DEFAULTZOOM, main_menu.y + 27.5/DEFAULTZOOM};
     
     //pause menu loop that waits for the player's action
     while (option == 1) {
@@ -299,9 +316,9 @@ int pause_display(Camera2D player_camera) {
             DrawTexture(main_menu_texture, main_menu.x, main_menu.y, WHITE);
             
         //add text labels for the buttons
-        DrawTextEx(GetFontDefault(), "RESUME", resume_text_position, FONTSIZE/DEFAULTZOOM, 1, BLACK);
+        DrawTextEx(GetFontDefault(), "RESUME", resume_text_position, FONTSIZE/DEFAULTZOOM/1.15, 1, BLACK);
         
-        DrawTextEx(GetFontDefault(), "MAIN MENU", main_menu_text_position, FONTSIZE/DEFAULTZOOM, 1, BLACK);
+        DrawTextEx(GetFontDefault(), "MAIN MENU", main_menu_text_position, FONTSIZE/DEFAULTZOOM/1.15, 1, BLACK);
         
         //NOTE: DrawTextEx must be used here bc DrawText smallest font would be larger than preferred
         
@@ -470,6 +487,7 @@ Vector2 txt_to_map(void) {
                 if (read == '\n')
                     fscanf(fileptr, "%c", &read);
                 else if (read == 'M') {
+                    enemies[enemies_counter].pivot = (Vector2){j*TILESIZE, i*TILESIZE};
                     enemies[enemies_counter].position_size = (Rectangle){j*TILESIZE, i*TILESIZE, ENEMYSIZE1, ENEMYSIZE1};
                     enemies_counter++;
                 }
@@ -543,14 +561,22 @@ void init_player_map(void) {
         laser_projectiles[i].bullet.y = -SCREENHEIGHT;
     laser_projectiles_counter = 0;
     
-    //enemies attributes
+    //enemies and its drops attributes
     for (int i = 0; i < ENEMIES; i++) {
-        enemies[i].speed.x = (float)(ENEMYMINSPEED*10) + (rand() % (int)(ENEMYMAXSPEED*10 - ENEMYMINSPEED*10 + 1));
+        //enemies
+        enemies[i].speed.x = (float)(ENEMYMINSPEED*10 + (rand() % (int)(ENEMYMAXSPEED*10 - ENEMYMINSPEED*10 + 1))/10.0);
         enemies[i].speed.y = 0.0;
+        enemies[i].movement_range = TILESIZE*(1 + (rand() % ENEMYMAXMOVERANGE));
         enemies[i].hearts = 2;
         enemies[i].blocked_left = 0;
         enemies[i].blocked_right = 0;
         enemies[i].shooting = 0;
+        enemies[i].alive = 1;
+        
+        //drops
+        hearts[i].state = 0;
+        hearts[i].position = (Vector2){0.0, 0.0};
+        hearts[i].drop_type = 0;
     }
 }
 
@@ -764,6 +790,8 @@ int gaming(Camera2D *player_camera) {
     
     player_movement();
     
+    enemy_movement();
+    
     camera_update(player_camera);
     
     player_death_test(*player_camera);
@@ -827,7 +855,7 @@ void player_death(Camera2D player_camera) {
         else
             DrawTexture(main_menu_texture, main_menu.x, main_menu.y, WHITE);
         
-        DrawTextEx(GetFontDefault(), "MAIN MENU", (Vector2){main_menu.x + 10/DEFAULTZOOM, main_menu.y + 25/DEFAULTZOOM}, FONTSIZE/DEFAULTZOOM, 1, BLACK);
+        DrawTextEx(GetFontDefault(), "MAIN MENU", (Vector2){main_menu.x + 16/DEFAULTZOOM, main_menu.y + 27.5/DEFAULTZOOM}, FONTSIZE/DEFAULTZOOM/1.15, 1, BLACK);
         
         EndMode2D();
         
@@ -936,4 +964,29 @@ void vulnerability_update(void) {
         invincibility_timer += GetFrameTime();
     } else
         invincibility_timer = 0.0f;
+}
+
+void enemy_movement(void) {
+    for (int i = 0; i < ENEMIES; i++) {
+        if (fabsf(enemies[i].position_size.x - enemies[i].pivot.x) > enemies[i].movement_range)
+            enemies[i].speed.x = -enemies[i].speed.x;
+        
+        if (enemies[i].hearts <= 0) {
+            enemies[i].pivot = (Vector2){enemies[i].pivot.x, enemies[i].pivot.y};
+            enemies[i].position_size.y = -SCREENHEIGHT;
+        }
+        
+        enemies[i].position_size.x += enemies[i].speed.x;
+        enemies[i].position_size.y += enemies[i].speed.y;
+    }
+}
+
+void enemies_drop_manager(void) {
+    for (int i = 0; i < ENEMIES; i++) {
+        if (enemies[i].hearts <= 0 && enemies[i].alive) {
+            hearts[i].state = 1;
+            hearts[i].position = enemies[i].pivot;
+            enemies[i].alive = 0;
+        }
+    }
 }
