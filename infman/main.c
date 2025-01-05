@@ -32,9 +32,10 @@
 
 //player macros
 #define PLAYERSIZE 16
+#define PLAYERHEARTS 5
+#define PLAYERHEARTSMAX 15
 #define PLAYERAMMO1 17
 #define PLAYERAMMO2 5
-#define PLAYERHEARTS 3
 #define WALKSPEED 2.0
 #define JUMPSPEED 2.5
 #define GRAVITY 0.1
@@ -42,7 +43,8 @@
 
 //enemy macros
 #define ENEMIES 5
-#define ENEMYSIZE1 16
+#define ENEMYHEARTS 2
+#define ENEMYSIZE1 20
 #define ENEMYMINSPEED 0.1
 #define ENEMYMAXSPEED 0.5
 #define ENEMYMAXMOVERANGE 4
@@ -191,6 +193,8 @@ void draw_projectiles(PROJECTILE projectile_array[], Color filter);
 void vulnerability_update(void);
 void spike_damage(void);
 void enemy_movement(void);
+void draw_enemies(Color filter);
+void enemies_drop_manager(void);
 
 //main function
 int main(void) {
@@ -514,7 +518,6 @@ Vector2 txt_to_map(void) {
 void draw_map(Color filter) {
     
     Vector2 drawing_position;
-    enemies_counter = 0;
     
     for (int i = 0; i < MAPHEIGHT; i++) {
         for (int j = 0; j < MAPLENGTH; j++) {
@@ -526,15 +529,12 @@ void draw_map(Color filter) {
                 case 'S': //draw the obstacle
                     DrawTextureV(obstacle_texture, drawing_position, filter);
                     break;
-                case 'M': //draw the enemies
-                    DrawTexture(enemy_texture, enemies[enemies_counter].position_size.x, enemies[enemies_counter].position_size.y, filter);
-                    enemies_counter++;
-                    break;
                 case 'P': //draw the player
                     DrawTextureV(player_texture, player.position, filter);
                     break;
             }
         }
+        draw_enemies(filter);
     }
 }
 
@@ -567,7 +567,7 @@ void init_player_map(void) {
         enemies[i].speed.x = (float)(ENEMYMINSPEED*10 + (rand() % (int)(ENEMYMAXSPEED*10 - ENEMYMINSPEED*10 + 1))/10.0);
         enemies[i].speed.y = 0.0;
         enemies[i].movement_range = TILESIZE*(1 + (rand() % ENEMYMAXMOVERANGE));
-        enemies[i].hearts = 2;
+        enemies[i].hearts = ENEMYHEARTS;
         enemies[i].blocked_left = 0;
         enemies[i].blocked_right = 0;
         enemies[i].shooting = 0;
@@ -615,9 +615,8 @@ void load_textures(void) {
     
     obstacle_texture = LoadTexture("/Users/melch/Desktop/projetos/projetos_faculdade/infman/resources/map/spike.png");
     
-    Image darkPurpleImage = GenImageColor(PLAYERSIZE, PLAYERSIZE, DARKPURPLE);
-    enemy_texture = LoadTextureFromImage(darkPurpleImage);
-    UnloadImage(darkPurpleImage);
+    enemy_texture = LoadTexture("/Users/melch/Desktop/projetos/projetos_faculdade/infman/resources/mobs/enemies.png");
+    
     
     Image beigeImage = GenImageColor(PLAYERSIZE, PLAYERSIZE, BEIGE);
     player_texture = LoadTextureFromImage(beigeImage);
@@ -791,6 +790,8 @@ int gaming(Camera2D *player_camera) {
     player_movement();
     
     enemy_movement();
+    
+    enemies_drop_manager();
     
     camera_update(player_camera);
     
@@ -984,9 +985,31 @@ void enemy_movement(void) {
 void enemies_drop_manager(void) {
     for (int i = 0; i < ENEMIES; i++) {
         if (enemies[i].hearts <= 0 && enemies[i].alive) {
+            player.score += 100;
             hearts[i].state = 1;
             hearts[i].position = enemies[i].pivot;
             enemies[i].alive = 0;
+        }
+    }
+}
+
+void draw_enemies(Color filter) {
+    for (int i = 0; i < ENEMIES; i++) {
+        ENEMY en = enemies[i];
+        
+        if (en.alive) {
+            Rectangle drawing_square = {0, 0, ENEMYSIZE1, ENEMYSIZE1};
+            
+            if (en.speed.x > 0)
+                drawing_square.y = ENEMYSIZE1;
+            
+            if (en.hearts <= ENEMYHEARTS/2 && PLAYERHEARTS > 1)
+                drawing_square.x += 2*ENEMYSIZE1;
+            
+            if (en.shooting == 1)
+                drawing_square.x += ENEMYSIZE1;
+            
+            DrawTextureRec(enemy_texture, drawing_square, (Vector2){en.position_size.x, en.position_size.y}, filter);
         }
     }
 }
