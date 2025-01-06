@@ -12,13 +12,13 @@
 					<key>EndingColumnNumber</key>
 					<string>0</string>
 					<key>EndingLineNumber</key>
-					<string>472</string>
+					<string>482</string>
 					<key>StartingColumnNumber</key>
 					<string>0</string>
 					<key>StartingLineNumber</key>
-					<string>471</string>
+					<string>481</string>
 					<key>Timestamp</key>
-					<string>757768227.459717</string>
+					<string>757812789.172014</string>
 				</dict>
 				<key>rebasable-url</key>
 				<dict>
@@ -59,13 +59,13 @@
 					<key>EndingColumnNumber</key>
 					<string>0</string>
 					<key>EndingLineNumber</key>
-					<string>912</string>
+					<string>915</string>
 					<key>StartingColumnNumber</key>
 					<string>0</string>
 					<key>StartingLineNumber</key>
-					<string>911</string>
+					<string>914</string>
 					<key>Timestamp</key>
-					<string>757768227.459765</string>
+					<string>757812789.171988</string>
 				</dict>
 				<key>rebasable-url</key>
 				<dict>
@@ -81,20 +81,67 @@
 			<key>text-context</key>
 			<dict>
 				<key>focused</key>
-				<string>        Rectangle current_bullet = {player.position.x + PLAYERSIZE, player.position.y + PLAYERSIZE/2, PROJECTILESIZE, PROJECTILESIZE/2};
+				<string>void laser_shoot(void) {
 </string>
 				<key>leading</key>
-				<string>            current_direction = player.speed.x/fabsf(player.speed.x);
-        
+				<string>}
+
 </string>
 				<key>trailing</key>
-				<string>        
-        laser_projectiles[laser_projectiles_counter] = (PROJECTILE){current_bullet, current_direction, 0};
-        
+				<string>    
+    for (int i = 0; i &lt; MAXPROJECTILES; i++) {
+        laser_projectiles[i].bullet.x += LASERPROJECTILESPEED*laser_projectiles[i].direction.x;
 </string>
 			</dict>
 			<key>title</key>
 			<string>NEED TO SUM THE DISTANCE Y DISTANCE BETWEEN THE TOP OF THE PLAYER AND THE GUN BARREL</string>
+			<key>type</key>
+			<string>bookmark</string>
+		</dict>
+		<dict>
+			<key>destination</key>
+			<dict>
+				<key>location-parameters</key>
+				<dict>
+					<key>EndingColumnNumber</key>
+					<string>0</string>
+					<key>EndingLineNumber</key>
+					<string>1012</string>
+					<key>StartingColumnNumber</key>
+					<string>0</string>
+					<key>StartingLineNumber</key>
+					<string>1011</string>
+					<key>Timestamp</key>
+					<string>757812982.7022001</string>
+				</dict>
+				<key>rebasable-url</key>
+				<dict>
+					<key>base</key>
+					<string>workspace</string>
+					<key>payload</key>
+					<dict>
+						<key>relative-path</key>
+						<string>infman/main.c</string>
+					</dict>
+				</dict>
+			</dict>
+			<key>text-context</key>
+			<dict>
+				<key>focused</key>
+				<string>            hearts[i].state = 1;
+</string>
+				<key>leading</key>
+				<string>        if (enemies[i].hearts &lt;= 0 &amp;&amp; enemies[i].alive) {
+            player.score += 100;
+</string>
+				<key>trailing</key>
+				<string>            hearts[i].position = enemies[i].pivot;
+            enemies[i].alive = 0;
+        }
+</string>
+			</dict>
+			<key>title</key>
+			<string>MAKE THE DROPS WORK !!!!!</string>
 			<key>type</key>
 			<string>bookmark</string>
 		</dict>

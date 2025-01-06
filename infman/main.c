@@ -48,6 +48,9 @@
 #define ENEMYMINSPEED 0.1
 #define ENEMYMAXSPEED 0.5
 #define ENEMYMAXMOVERANGE 4
+#define CHANCEOFSHOOTING 60 //the number here is represented by its inverse! example 6 -> 1/6
+#define ENEMYRELOADTIMEMIN 1
+#define ENEMYRELOADTIMEMAX 5
 
 //projectile macros
 #define MAXPROJECTILES 96
@@ -86,6 +89,7 @@ typedef struct {
     //scalar quantities
     int hearts;
     int movement_range;
+    int reload_time;
     
     //state testing
     bool blocked_left;
@@ -97,7 +101,7 @@ typedef struct {
 
 typedef struct {
     Rectangle bullet;
-    int direction;
+    Vector2 direction;
     int projectile_type; //0 for laser, 1 for bazooka, 2 for enemy shot and so on...
     
 } PROJECTILE;
@@ -121,6 +125,7 @@ typedef struct {
 int current_screen = 2; //0 for gaming, 1 to pause and 2 to main_menu --> may be initialized as 2!
 int do_not_exit = 1; //defined as 1, must only be modified by the main menu EXIT button or the ERROR HANDLING functions!!
 float invincibility_timer = 0;
+float enemies_shooting_timer[ENEMIES] = {0};
 PLAYER_ON_TOP top_players[TOPLAYERS]; //array containing the top players, filled by the reading of top_scores.bin
 char map[MAPHEIGHT][MAPLENGTH]; //matrix containing the map description, filled by the reading of terrain.txt
 ENEMY enemies[ENEMIES] = {0};
@@ -195,6 +200,11 @@ void spike_damage(void);
 void enemy_movement(void);
 void draw_enemies(Color filter);
 void enemies_drop_manager(void);
+void player_laser(void);
+void enemies_laser(void);
+bool enemy_should_shoot(ENEMY en, int position_on_array);
+int roll_a_dice(int max_number);
+bool projectile_player_hit_test(PROJECTILE proj);
 
 //main function
 int main(void) {
@@ -572,6 +582,7 @@ void init_player_map(void) {
         enemies[i].blocked_right = 0;
         enemies[i].shooting = 0;
         enemies[i].alive = 1;
+        enemies[i].reload_time = ENEMYRELOADTIMEMIN + (rand() % (ENEMYRELOADTIMEMAX - ENEMYRELOADTIMEMIN + 1));
         
         //drops
         hearts[i].state = 0;
@@ -789,7 +800,11 @@ int gaming(Camera2D *player_camera) {
     
     player_movement();
     
+    player_laser();
+    
     enemy_movement();
+    
+    enemies_laser();
     
     enemies_drop_manager();
     
@@ -898,32 +913,26 @@ void draw_player_hearts(int hearts, Camera2D *player_camera) {
 }
 
 void laser_shoot(void) {
-    if (player.ammo_laser > 0 && IsKeyPressed(KEY_E)) {
-        int current_direction;
-        
-        if (laser_projectiles_counter >= MAXPROJECTILES)
-            laser_projectiles_counter = 0;
-        
-        if (player.speed.x == 0)
-            current_direction = 1;
-        else
-            current_direction = player.speed.x/fabsf(player.speed.x);
-        
-        Rectangle current_bullet = {player.position.x + PLAYERSIZE, player.position.y + PLAYERSIZE/2, PROJECTILESIZE, PROJECTILESIZE/2};
-        
-        laser_projectiles[laser_projectiles_counter] = (PROJECTILE){current_bullet, current_direction, 0};
-        
-        laser_projectiles_counter++;
-        player.ammo_laser--;
-    }
     
     for (int i = 0; i < MAXPROJECTILES; i++) {
-        laser_projectiles[i].bullet.x += LASERPROJECTILESPEED*laser_projectiles[i].direction;
+        laser_projectiles[i].bullet.x += LASERPROJECTILESPEED*laser_projectiles[i].direction.x;
+        laser_projectiles[i].bullet.y += LASERPROJECTILESPEED*laser_projectiles[i].direction.y;
         
+        if (projectile_player_hit_test(laser_projectiles[i]) &&
+            laser_projectiles[i].projectile_type == 2) {
+            
+            laser_projectiles[i].bullet.y = -SCREENWIDTH;
+            player.hearts--;
+            
+        }
+            
+            
         for (int j = 0; j < ENEMIES; j++) {
-            if (projectile_enemy_hit_test(laser_projectiles[i], enemies[j])) {
+            if (projectile_enemy_hit_test(laser_projectiles[i], enemies[j]) && laser_projectiles[i].projectile_type == 0) {
+                
                 laser_projectiles[i].bullet.y = -SCREENHEIGHT;
                 enemies[j].hearts--;
+                
             }
         }
     }
@@ -934,13 +943,21 @@ bool projectile_enemy_hit_test(PROJECTILE projectile, ENEMY enemy) {
 }
 
 void draw_projectiles(PROJECTILE projectile_array[], Color filter) {
-    if (projectile_array[0].projectile_type == 0) {
-        for (int i = 0; i < MAXPROJECTILES; i++) {
-            if (projectile_array[i].direction == 1)
-                DrawTextureRec(laser_bullet_texture, (Rectangle){0,0,PROJECTILESIZE, PROJECTILESIZE/2}, (Vector2) {projectile_array[i].bullet.x, projectile_array[i].bullet.y}, filter);
-            else if (projectile_array[i].direction == -1)
-                DrawTextureRec(laser_bullet_texture, (Rectangle){8,0,PROJECTILESIZE, PROJECTILESIZE/2}, (Vector2) {projectile_array[i].bullet.x, projectile_array[i].bullet.y}, filter);
-        }
+        
+    for (int i = 0; i < MAXPROJECTILES; i++) {
+        PROJECTILE projectile = projectile_array[i];
+
+        //switch (projectile.projectile_type) {
+          //  case 0:
+                if (projectile.direction.x == 1)
+                    DrawTextureRec(laser_bullet_texture, (Rectangle){0,0,PROJECTILESIZE, PROJECTILESIZE/2}, (Vector2) {projectile.bullet.x, projectile.bullet.y}, filter);
+                else if (projectile_array[i].direction.x == -1)
+                    DrawTextureRec(laser_bullet_texture, (Rectangle){8,0,PROJECTILESIZE, PROJECTILESIZE/2}, (Vector2) {projectile.bullet.x, projectile.bullet.y}, filter);
+               // break;
+            //case 2:
+                
+              //  break;
+        //}
     }
 }
 
@@ -977,6 +994,12 @@ void enemy_movement(void) {
             enemies[i].position_size.y = -SCREENHEIGHT;
         }
         
+        if ((enemies[i].speed.x < 0 && player.position.x < enemies[i].position_size.x) ||
+            (enemies[i].speed.x > 0 && player.position.x > enemies[i].position_size.x))
+            enemies[i].shooting = 1;
+        else
+            enemies[i].shooting = 0;
+        
         enemies[i].position_size.x += enemies[i].speed.x;
         enemies[i].position_size.y += enemies[i].speed.y;
     }
@@ -1012,4 +1035,98 @@ void draw_enemies(Color filter) {
             DrawTextureRec(enemy_texture, drawing_square, (Vector2){en.position_size.x, en.position_size.y}, filter);
         }
     }
+}
+
+void enemies_laser(void) {
+    for (int i = 0; i < ENEMIES; i++) {
+        if (enemy_should_shoot(enemies[i], i)) {
+            
+            int current_direction_x;
+            Rectangle current_bullet;
+            
+            if (laser_projectiles_counter >= MAXPROJECTILES)
+                laser_projectiles_counter = 0;
+            
+            current_direction_x = enemies[i].speed.x/fabsf(enemies[i].speed.x);
+            
+            if (current_direction_x == 1)
+                current_bullet.x = enemies[i].position_size.x + ENEMYSIZE1;
+            else
+                current_bullet.x = enemies[i].position_size.x;
+            
+            current_bullet.y = enemies[i].position_size.y + 12;
+            current_bullet.width = PROJECTILESIZE;
+            current_bullet.height = PROJECTILESIZE/2;
+            
+            laser_projectiles[laser_projectiles_counter] = (PROJECTILE){current_bullet, (Vector2){current_direction_x, 0.0}, 2};
+            
+            laser_projectiles_counter++;
+        }
+    }
+}
+
+void player_laser(void) {
+    
+    if (player.ammo_laser > 0 && IsKeyPressed(KEY_E)) {
+        int current_direction;
+        Rectangle current_bullet;
+        
+        if (laser_projectiles_counter >= MAXPROJECTILES)
+            laser_projectiles_counter = 0;
+        
+        if (player.speed.x == 0)
+            current_direction = 1;
+        else
+            current_direction = player.speed.x/fabsf(player.speed.x);
+        
+        if (current_direction == 1) {
+            current_bullet.x = player.position.x + PLAYERSIZE;
+        } else
+            current_bullet.x = player.position.x;
+        
+        current_bullet.y = player.position.y + PLAYERSIZE/2;
+        current_bullet.width = PROJECTILESIZE;
+        current_bullet.height = PROJECTILESIZE/2;
+        
+        laser_projectiles[laser_projectiles_counter] = (PROJECTILE){current_bullet, (Vector2){current_direction, 0.0}, 0};
+        
+        laser_projectiles_counter++;
+        player.ammo_laser--;
+    }
+}
+
+bool enemy_should_shoot(ENEMY en, int position_on_array) {
+    int decision;
+    
+    int enemy_can_shoot = 0;
+        
+    if (enemies_shooting_timer[position_on_array] >= en.reload_time && en.shooting) {
+        enemy_can_shoot = 1;
+        enemies_shooting_timer[position_on_array] = 0;
+    } else if (!enemy_can_shoot) {
+        enemies_shooting_timer[position_on_array] += GetFrameTime();
+    } else
+        enemies_shooting_timer[position_on_array] = 0;
+    
+    if (roll_a_dice(CHANCEOFSHOOTING) == 1 && enemy_can_shoot)
+        decision = 1;
+    else
+        decision = 0;
+    
+    return decision;
+}
+
+int roll_a_dice(int max_number) {
+    return 1 + (rand() % max_number);
+}
+
+bool projectile_player_hit_test(PROJECTILE proj) {
+    Rectangle player_collision_box = {
+        player.position.x,
+        player.position.y,
+        player.size.x,
+        player.size.x,
+    };
+            
+    return CheckCollisionRecs(player_collision_box, proj.bullet);
 }
