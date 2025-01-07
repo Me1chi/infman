@@ -31,15 +31,17 @@
 #define CIRCUITPARTS 20
 
 //player macros
-#define PLAYERSIZE 16
+#define PLAYERSIZE 24
 #define PLAYERHEARTS 5
 #define PLAYERHEARTSMAX 15
 #define PLAYERAMMO1 17
 #define PLAYERAMMO2 5
-#define WALKSPEED 2.0
-#define JUMPSPEED 2.5
+#define WALKSPEED 2.5
+#define JUMPSPEED 2.75
 #define GRAVITY 0.1
-#define INVINCIBILITYTIME 1.0
+#define MAXFALLINGSPEED 3.0
+#define INVINCIBILITYTIME 0.5
+#define DAMAGESPEEDRETARDING 1.5
 
 //enemy macros
 #define ENEMIES 5
@@ -47,10 +49,12 @@
 #define ENEMYSIZE1 20
 #define ENEMYMINSPEED 0.1
 #define ENEMYMAXSPEED 0.5
+#define ENEMYMINMOVERANGE 2
 #define ENEMYMAXMOVERANGE 4
-#define CHANCEOFSHOOTING 60 //the number here is represented by its inverse! example 6 -> 1/6
+#define CHANCEOFSHOOTING 2 //the number here is represented by its inverse! example 6 -> 1/6
 #define ENEMYRELOADTIMEMIN 1
-#define ENEMYRELOADTIMEMAX 5
+#define ENEMYRELOADTIMEMAX 2
+#define ENEMYFOV 700.0
 
 //projectile macros
 #define MAXPROJECTILES 96
@@ -96,6 +100,7 @@ typedef struct {
     bool blocked_right;
     bool shooting;
     bool alive;
+    bool met_player;
     
 } ENEMY;
 
@@ -154,6 +159,7 @@ Texture2D enemy_texture;
 Texture2D player_texture;
 Texture2D player_heart_texture;
 Texture2D laser_bullet_texture;
+Texture2D enemies_laser_bullet_texture;
 
 //functions declarations (organized)
 
@@ -185,7 +191,7 @@ void draw_background(Color filter);
 void draw_player(void);
 void player_movement(void);
 void player_jump(int scale);
-void is_player_on(char option); //Collision test: L or R -> left or right, C or F -> ceiling or floor
+void is_player_on_map(void);
 void camera_update(Camera2D *camera);
 void player_death_test(Camera2D player_camera);
 void player_death(Camera2D player_camera);
@@ -205,6 +211,11 @@ void enemies_laser(void);
 bool enemy_should_shoot(ENEMY en, int position_on_array);
 int roll_a_dice(int max_number);
 bool projectile_player_hit_test(PROJECTILE proj);
+void is_player_blocked(void);
+void get_map_tiles_matrix(Rectangle map_tiles[MAPHEIGHT][MAPLENGTH], int do_spikes_matter);
+bool check_map_tiles_collision(Rectangle map_tiles[MAPHEIGHT][MAPLENGTH], Rectangle object);
+void enemies_meet_player(void);
+bool enemy_looking_at_player(ENEMY en);
 
 //main function
 int main(void) {
@@ -360,9 +371,9 @@ int main_menu_display(void) {
     Vector2 mouse_pointer = {0.0f, 0.0f};
     
     //build the rectangles representing the buttons logically
-    Rectangle play = {SCREENWIDTH/2 - BUTTONWIDTH/2, SCREENHEIGHT/3, 2*BUTTONWIDTH, BUTTONHEIGHT};
-    Rectangle leaderboard = {SCREENWIDTH/2 - BUTTONWIDTH/2, SCREENHEIGHT/3 + SCREENHEIGHT/6, 2*BUTTONWIDTH, BUTTONHEIGHT};
-    Rectangle exit = {SCREENWIDTH/2 - BUTTONWIDTH/2, SCREENHEIGHT/3 + SCREENHEIGHT/3, 2*BUTTONWIDTH, BUTTONHEIGHT};
+    Rectangle play = {SCREENWIDTH/2 - BUTTONWIDTH/2, SCREENHEIGHT/3, BUTTONWIDTH, BUTTONHEIGHT};
+    Rectangle leaderboard = {SCREENWIDTH/2 - BUTTONWIDTH/2, SCREENHEIGHT/3 + SCREENHEIGHT/6, BUTTONWIDTH, BUTTONHEIGHT};
+    Rectangle exit = {SCREENWIDTH/2 - BUTTONWIDTH/2, SCREENHEIGHT/3 + SCREENHEIGHT/3, BUTTONWIDTH, BUTTONHEIGHT};
     
     //main menu loop that closes when the player makes an action
     while (option == 2 && do_not_exit) {
@@ -576,13 +587,14 @@ void init_player_map(void) {
         //enemies
         enemies[i].speed.x = (float)(ENEMYMINSPEED*10 + (rand() % (int)(ENEMYMAXSPEED*10 - ENEMYMINSPEED*10 + 1))/10.0);
         enemies[i].speed.y = 0.0;
-        enemies[i].movement_range = TILESIZE*(1 + (rand() % ENEMYMAXMOVERANGE));
+        enemies[i].movement_range = TILESIZE*(ENEMYMINMOVERANGE + (rand() % (ENEMYMAXMOVERANGE - ENEMYMINMOVERANGE + 1)));
         enemies[i].hearts = ENEMYHEARTS;
         enemies[i].blocked_left = 0;
         enemies[i].blocked_right = 0;
         enemies[i].shooting = 0;
         enemies[i].alive = 1;
         enemies[i].reload_time = ENEMYRELOADTIMEMIN + (rand() % (ENEMYRELOADTIMEMAX - ENEMYRELOADTIMEMIN + 1));
+        enemies[i].met_player = 0;
         
         //drops
         hearts[i].state = 0;
@@ -622,12 +634,11 @@ void load_textures(void) {
     //gaming textures
     background_texture = LoadTexture("/Users/melch/Desktop/projetos/projetos_faculdade/infman/resources/map/background.png");
     
-    floor_texture = LoadTexture("/Users/melch/Desktop/projetos/projetos_faculdade/infman/resources/map/tile1.png");
+    floor_texture = LoadTexture("/Users/melch/Desktop/projetos/projetos_faculdade/infman/resources/map/tile.png");
     
     obstacle_texture = LoadTexture("/Users/melch/Desktop/projetos/projetos_faculdade/infman/resources/map/spike.png");
     
     enemy_texture = LoadTexture("/Users/melch/Desktop/projetos/projetos_faculdade/infman/resources/mobs/enemies.png");
-    
     
     Image beigeImage = GenImageColor(PLAYERSIZE, PLAYERSIZE, BEIGE);
     player_texture = LoadTextureFromImage(beigeImage);
@@ -636,6 +647,8 @@ void load_textures(void) {
     player_heart_texture = LoadTexture("/Users/melch/Desktop/Projetos/projetos_faculdade/infman/resources/player/inf_man-heart.png");
     
     laser_bullet_texture = LoadTexture("/Users/melch/Desktop/Projetos/projetos_faculdade/infman/resources/player/player_laser_bullet.png");
+    
+    enemies_laser_bullet_texture = LoadTexture("/Users/melch/Desktop/Projetos/projetos_faculdade/infman/resources/mobs/enemies_laser_bullet.png");
 }
 
 void unload_textures(void) {
@@ -658,6 +671,7 @@ void unload_textures(void) {
     UnloadTexture(player_texture);
     UnloadTexture(player_heart_texture);
     UnloadTexture(laser_bullet_texture);
+    UnloadTexture(enemies_laser_bullet_texture);
 }
 
 void draw_background(Color filter) {
@@ -680,21 +694,24 @@ void player_movement(void) {
     player.position.y += player.speed.y;
     
     //horizontal movement
-    if (IsKeyDown(KEY_D) && !player.blocked_right)
-        player.speed.x = 1.5f;
-    else if (IsKeyDown(KEY_A)  && !player.blocked_left)
-        player.speed.x = -1.5f;
+    if (IsKeyDown(KEY_D) && !IsKeyDown(KEY_A) && !player.blocked_right)
+        player.speed.x = WALKSPEED;
+    else if (IsKeyDown(KEY_A) && !IsKeyDown(KEY_D) && !player.blocked_left)
+        player.speed.x = -WALKSPEED;
     else
         player.speed.x = 0.0f;
+    
+    if (invincibility_timer > 0 && invincibility_timer < INVINCIBILITYTIME/2)
+        player.speed.x = player.speed.x/DAMAGESPEEDRETARDING;
     
     //vertical movement
     if (player.on_floor) {
         player.speed.y = 0.0f;
         
-        if (IsKeyDown(KEY_SPACE)) {
+        if (IsKeyDown(KEY_SPACE))
             player_jump(1);
-        }
-    } else
+        
+    } else if (player.speed.y < MAXFALLINGSPEED)
         player.speed.y += GRAVITY;
 }
 
@@ -702,68 +719,95 @@ void player_jump(int scale) {
     player.speed.y = -JUMPSPEED*scale;
 }
 
-void is_player_on(char option) {
-    int out_of_limits_x = 0;
+void is_player_on_map(void) {
+    
     int out_of_limits_y = 0;
-    int out_of_limits = 0;
     
     int horizontal_tile = floorf(player.position.x / TILESIZE);
     int vertical_tile = floorf(player.position.y / TILESIZE);
     
-    //checks if the player is on the map;
-    if (horizontal_tile <= 0 || horizontal_tile >= MAPLENGTH)
-        out_of_limits_x = 1;
-    
     if (vertical_tile <= 0 || vertical_tile >= MAPHEIGHT) {
         out_of_limits_y = 1;
     }
+
+    if (!out_of_limits_y && vertical_tile > 0) {
+        if (map[vertical_tile - 1][horizontal_tile] == 'O' || map[vertical_tile - 1][horizontal_tile + 1] == 'O') {
+            player.on_ceiling = 1;
+        } else
+            player.on_ceiling = 0;
+    } else
+        player.on_ceiling = 1;
+            
+    if (vertical_tile == MAPHEIGHT + 6)
+        player.hearts = 0;
+            
+}
+
+void is_player_blocked(void) {
     
-    out_of_limits = out_of_limits_x + out_of_limits_y;
+    int on_floor_test = 0;
+    int blocked_left_test = 0;
+    int blocked_left_temp = 0;
+    int blocked_right_test = 0;
+    int blocked_right_temp = 0;
     
-    switch (option) {
-        case 'L':
-            if (!out_of_limits && horizontal_tile > 0) {
-                if (map[vertical_tile][horizontal_tile] == 'O') {
-                    player.blocked_left = 1;
-                } else
-                    player.blocked_left = 0;
-            } else if (horizontal_tile == 0) {
-                player.blocked_left = 1;
-            }
-            break;
+    Rectangle player_box = {
+        player.position.x - 1,
+        player.position.y,
+        player.size.x + 2,
+        player.size.y + 2
+    };
+    
+    Rectangle map_tiles[MAPHEIGHT][MAPLENGTH];
+    
+    get_map_tiles_matrix(map_tiles, false);
+    
+    for (int i = 0; i < MAPHEIGHT; i++) {
+        for (int j = 0; j < MAPLENGTH; j++) {
+            blocked_left_temp = 0;
+            blocked_right_temp = 0;
             
-        case 'R':
-            if (!out_of_limits && horizontal_tile < MAPLENGTH - 1) {
-                if (map[vertical_tile][horizontal_tile + 1] == 'O') {
-                    player.blocked_right = 1;
-                } else
-                    player.blocked_right = 0;
-            } else if (horizontal_tile == MAPLENGTH - 1) {
-                player.blocked_right = 1;
+            if (CheckCollisionRecs(map_tiles[i][j], player_box)) {
+                
+                if (player_box.y + player_box.height <= map_tiles[i][j].y + 6) {
+                    on_floor_test++;
+                    if (player_box.y + player_box.height < map_tiles[i][j].y + 2)
+                        on_floor_test += 1000;
+                }
+                    
+                if (player_box.x <= map_tiles[i][j].x - TILESIZE + 5 && on_floor_test == 0) {
+                    blocked_right_test++;
+                    blocked_right_temp = 1;
+                }
+                    
+                if (player_box.x >= map_tiles[i][j].x + TILESIZE - 5 && on_floor_test == 0) {
+                    blocked_left_test++;
+                    blocked_left_temp = 1;
+                }
+                
+                if ((blocked_left_temp && blocked_right_temp) && on_floor_test == 0)
+                    on_floor_test--;
+                
             }
-            break;
             
-        case 'C':
-            if (!out_of_limits_y && vertical_tile > 0) {
-                if (map[vertical_tile - 1][horizontal_tile] == 'O' || map[vertical_tile - 1][horizontal_tile + 1] == 'O') {
-                    player.on_ceiling = 1;
-                } else
-                    player.on_ceiling = 0;
-            } else
-                player.on_ceiling = 1;
-            break;
-            
-        case 'F':
-            if (!out_of_limits_y && vertical_tile < MAPHEIGHT - 1) {
-                if (map[vertical_tile + 1][horizontal_tile] == 'O' || map[vertical_tile + 1][horizontal_tile + 1] == 'O') {
-                    player.on_floor = 1;
-                } else
-                    player.on_floor = 0;
-            } else if (vertical_tile == MAPHEIGHT + 6) {
-                player.hearts = 0;
-            }
-            break;
+        }
     }
+    
+    if (on_floor_test > 0)
+        player.on_floor = 1;
+    else
+        player.on_floor = 0;
+    
+    if (blocked_right_test > 0)
+        player.blocked_right = 1;
+    else
+        player.blocked_right = 0;
+    
+    if (blocked_left_test > 0)
+        player.blocked_left = 1;
+    else
+        player.blocked_left = 0;
+    
 }
 
 void gaming_test(Camera2D *player_camera) {
@@ -773,10 +817,10 @@ void gaming_test(Camera2D *player_camera) {
 }
 
 int gaming(Camera2D *player_camera) {
-    is_player_on('R');
-    is_player_on('L');
-    is_player_on('C');
-    is_player_on('F');
+
+    is_player_on_map();
+    
+    is_player_blocked();
     
     BeginDrawing();
     
@@ -815,6 +859,8 @@ int gaming(Camera2D *player_camera) {
     spike_damage();
     
     vulnerability_update();
+    
+    printf("%f\n", player.speed.y);
     
     return 0;
 }
@@ -894,6 +940,11 @@ void player_damage(char source) {
         case 'S':
             player.hearts--;
             break;
+            
+        case 'L':
+            player.hearts--;
+            player.speed.x = player.speed.x/10;
+            break;
     }
     
     player.vulnerable = 0;
@@ -914,6 +965,10 @@ void draw_player_hearts(int hearts, Camera2D *player_camera) {
 
 void laser_shoot(void) {
     
+    Rectangle map_tiles[MAPHEIGHT][MAPLENGTH];
+    
+    get_map_tiles_matrix(map_tiles, true);
+    
     for (int i = 0; i < MAXPROJECTILES; i++) {
         laser_projectiles[i].bullet.x += LASERPROJECTILESPEED*laser_projectiles[i].direction.x;
         laser_projectiles[i].bullet.y += LASERPROJECTILESPEED*laser_projectiles[i].direction.y;
@@ -922,19 +977,26 @@ void laser_shoot(void) {
             laser_projectiles[i].projectile_type == 2) {
             
             laser_projectiles[i].bullet.y = -SCREENWIDTH;
-            player.hearts--;
+            player_damage('L');
             
         }
             
             
         for (int j = 0; j < ENEMIES; j++) {
-            if (projectile_enemy_hit_test(laser_projectiles[i], enemies[j]) && laser_projectiles[i].projectile_type == 0) {
+            if (projectile_enemy_hit_test(laser_projectiles[i], enemies[j]) &&
+                
+                laser_projectiles[i].projectile_type == 0) {
                 
                 laser_projectiles[i].bullet.y = -SCREENHEIGHT;
                 enemies[j].hearts--;
-                
             }
         }
+        
+        if (check_map_tiles_collision(map_tiles, laser_projectiles[i].bullet) &&
+            laser_projectiles[i].projectile_type == 0) {
+            laser_projectiles[i].bullet.y = -SCREENHEIGHT;
+        }
+            
     }
 }
 
@@ -947,17 +1009,20 @@ void draw_projectiles(PROJECTILE projectile_array[], Color filter) {
     for (int i = 0; i < MAXPROJECTILES; i++) {
         PROJECTILE projectile = projectile_array[i];
 
-        //switch (projectile.projectile_type) {
-          //  case 0:
+        switch (projectile.projectile_type) {
+            case 0:
                 if (projectile.direction.x == 1)
                     DrawTextureRec(laser_bullet_texture, (Rectangle){0,0,PROJECTILESIZE, PROJECTILESIZE/2}, (Vector2) {projectile.bullet.x, projectile.bullet.y}, filter);
                 else if (projectile_array[i].direction.x == -1)
                     DrawTextureRec(laser_bullet_texture, (Rectangle){8,0,PROJECTILESIZE, PROJECTILESIZE/2}, (Vector2) {projectile.bullet.x, projectile.bullet.y}, filter);
-               // break;
-            //case 2:
-                
-              //  break;
-        //}
+                break;
+            case 2:
+                if (projectile.direction.x == 1)
+                    DrawTextureRec(enemies_laser_bullet_texture, (Rectangle){0,0,PROJECTILESIZE, PROJECTILESIZE/2}, (Vector2) {projectile.bullet.x, projectile.bullet.y}, filter);
+                else if (projectile_array[i].direction.x == -1)
+                    DrawTextureRec(enemies_laser_bullet_texture, (Rectangle){8,0,PROJECTILESIZE, PROJECTILESIZE/2}, (Vector2) {projectile.bullet.x, projectile.bullet.y}, filter);
+                break;
+        }
     }
 }
 
@@ -985,6 +1050,8 @@ void vulnerability_update(void) {
 }
 
 void enemy_movement(void) {
+    enemies_meet_player();
+    
     for (int i = 0; i < ENEMIES; i++) {
         if (fabsf(enemies[i].position_size.x - enemies[i].pivot.x) > enemies[i].movement_range)
             enemies[i].speed.x = -enemies[i].speed.x;
@@ -994,8 +1061,8 @@ void enemy_movement(void) {
             enemies[i].position_size.y = -SCREENHEIGHT;
         }
         
-        if ((enemies[i].speed.x < 0 && player.position.x < enemies[i].position_size.x) ||
-            (enemies[i].speed.x > 0 && player.position.x > enemies[i].position_size.x))
+        if (enemy_looking_at_player(enemies[i]) &&
+            enemies[i].met_player)
             enemies[i].shooting = 1;
         else
             enemies[i].shooting = 0;
@@ -1008,7 +1075,12 @@ void enemy_movement(void) {
 void enemies_drop_manager(void) {
     for (int i = 0; i < ENEMIES; i++) {
         if (enemies[i].hearts <= 0 && enemies[i].alive) {
-            player.score += 100;
+            if (!enemies[i].met_player)
+                player.score += 15;
+            else if (!enemy_looking_at_player(enemies[i]))
+                player.score += 50;
+            else
+                player.score += 100;
             hearts[i].state = 1;
             hearts[i].position = enemies[i].pivot;
             enemies[i].alive = 0;
@@ -1117,7 +1189,10 @@ bool enemy_should_shoot(ENEMY en, int position_on_array) {
 }
 
 int roll_a_dice(int max_number) {
-    return 1 + (rand() % max_number);
+    if (max_number == 0)
+        return 0;
+    else
+        return 1 + (rand() % max_number);
 }
 
 bool projectile_player_hit_test(PROJECTILE proj) {
@@ -1127,6 +1202,64 @@ bool projectile_player_hit_test(PROJECTILE proj) {
         player.size.x,
         player.size.x,
     };
+    
+    bool collision_test;
+    
+    if (player.vulnerable)
+        collision_test = CheckCollisionRecs(player_collision_box, proj.bullet);
+    else
+        collision_test = 0;
+    
+    return collision_test;
+}
+
+void get_map_tiles_matrix(Rectangle map_tiles[MAPHEIGHT][MAPLENGTH], int do_spikes_matter) {
+    
+    for (int i = 0; i < MAPHEIGHT; i++) {
+        for (int j = 0; j < MAPLENGTH; j++) {
+            if (map[i][j] == 'O' || map[i][j] == 'S'*do_spikes_matter)
+                map_tiles[i][j] = (Rectangle){
+                    j * TILESIZE,
+                    i * TILESIZE,
+                    TILESIZE,
+                    TILESIZE
+                };
+            else
+                map_tiles[i][j] = (Rectangle){
+                    0,
+                    0,
+                    0,
+                    0
+                };
+        }
+    }
+}
+
+bool check_map_tiles_collision(Rectangle map_tiles[MAPHEIGHT][MAPLENGTH], Rectangle object) {
+    int testing = 0;
+    
+    for (int i = 0; i < MAPHEIGHT; i++) {
+        for (int j = 0; j < MAPLENGTH; j++) {
             
-    return CheckCollisionRecs(player_collision_box, proj.bullet);
+            testing += CheckCollisionRecs(map_tiles[i][j], object);
+            
+        }
+    }
+    
+    return testing;
+}
+
+void enemies_meet_player(void) {
+    for (int i = 0; i < ENEMIES; i++) {
+        if (fabsf(player.position.x - enemies[i].position_size.x) < ENEMYFOV/DEFAULTZOOM)
+            enemies[i].met_player = 1;
+    }
+}
+                     
+bool enemy_looking_at_player(ENEMY en) {
+    bool test = 0;
+    
+    test = (en.speed.x < 0 && player.position.x < en.position_size.x) || (en.speed.x > 0 && player.position.x > en.position_size.x);
+    
+    return test;
 }

@@ -12,13 +12,13 @@
 					<key>EndingColumnNumber</key>
 					<string>0</string>
 					<key>EndingLineNumber</key>
-					<string>482</string>
+					<string>501</string>
 					<key>StartingColumnNumber</key>
 					<string>0</string>
 					<key>StartingLineNumber</key>
-					<string>481</string>
+					<string>500</string>
 					<key>Timestamp</key>
-					<string>757812789.172014</string>
+					<string>757940060.30522</string>
 				</dict>
 				<key>rebasable-url</key>
 				<dict>
@@ -34,16 +34,16 @@
 			<key>text-context</key>
 			<dict>
 				<key>focused</key>
-				<string>    if ((fileptr = fopen("/Users/melch/Desktop/Projetos/projetos_faculdade/infman/infman/bin/top_scores.bin", "r+")) != NULL) {
+				<string>Vector2 txt_to_map(void) {
 </string>
 				<key>leading</key>
-				<string>    FILE *fileptr;
-    
+				<string>}
+
 </string>
 				<key>trailing</key>
-				<string>        fread(top_players, sizeof(PLAYER_ON_TOP), TOPLAYERS, fileptr);
-    } else
-        do_not_exit = 0;
+				<string>    int player_exists = 0;
+    char read;
+    FILE *fileptr;
 </string>
 			</dict>
 			<key>title</key>
@@ -59,13 +59,13 @@
 					<key>EndingColumnNumber</key>
 					<string>0</string>
 					<key>EndingLineNumber</key>
-					<string>915</string>
+					<string>980</string>
 					<key>StartingColumnNumber</key>
 					<string>0</string>
 					<key>StartingLineNumber</key>
-					<string>914</string>
+					<string>979</string>
 					<key>Timestamp</key>
-					<string>757812789.171988</string>
+					<string>757940060.304998</string>
 				</dict>
 				<key>rebasable-url</key>
 				<dict>
@@ -81,16 +81,16 @@
 			<key>text-context</key>
 			<dict>
 				<key>focused</key>
-				<string>void laser_shoot(void) {
+				<string>            player_damage('L');
 </string>
 				<key>leading</key>
-				<string>}
-
+				<string>            
+            laser_projectiles[i].bullet.y = -SCREENWIDTH;
 </string>
 				<key>trailing</key>
-				<string>    
-    for (int i = 0; i &lt; MAXPROJECTILES; i++) {
-        laser_projectiles[i].bullet.x += LASERPROJECTILESPEED*laser_projectiles[i].direction.x;
+				<string>            
+        }
+            
 </string>
 			</dict>
 			<key>title</key>
@@ -106,13 +106,13 @@
 					<key>EndingColumnNumber</key>
 					<string>0</string>
 					<key>EndingLineNumber</key>
-					<string>1012</string>
+					<string>1094</string>
 					<key>StartingColumnNumber</key>
 					<string>0</string>
 					<key>StartingLineNumber</key>
-					<string>1011</string>
+					<string>1093</string>
 					<key>Timestamp</key>
-					<string>757812982.7022001</string>
+					<string>757940060.305341</string>
 				</dict>
 				<key>rebasable-url</key>
 				<dict>
@@ -128,16 +128,16 @@
 			<key>text-context</key>
 			<dict>
 				<key>focused</key>
-				<string>            hearts[i].state = 1;
+				<string>        
 </string>
 				<key>leading</key>
-				<string>        if (enemies[i].hearts &lt;= 0 &amp;&amp; enemies[i].alive) {
-            player.score += 100;
+				<string>    for (int i = 0; i &lt; ENEMIES; i++) {
+        ENEMY en = enemies[i];
 </string>
 				<key>trailing</key>
-				<string>            hearts[i].position = enemies[i].pivot;
-            enemies[i].alive = 0;
-        }
+				<string>        if (en.alive) {
+            Rectangle drawing_square = {0, 0, ENEMYSIZE1, ENEMYSIZE1};
+            
 </string>
 			</dict>
 			<key>title</key>
