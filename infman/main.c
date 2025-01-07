@@ -32,8 +32,12 @@
 
 //player macros
 #define PLAYERSIZE 24
+#define PLAYERSIZESHOOTJUMP 32
+#define PLAYERBLINKTIME 7 //every x seconds player blinks if idle
+#define SPRITEFRAMETIME 0.2 //in seconds
 #define PLAYERHEARTS 5
 #define PLAYERHEARTSMAX 15
+#define PLAYERSHOOTTIME 0.5
 #define PLAYERAMMO1 17
 #define PLAYERAMMO2 5
 #define WALKSPEED 2.5
@@ -74,8 +78,7 @@ typedef struct {
     int score;
     
     //state testing
-    bool laser_shooting;
-    bool bazooka_shooting;
+    bool shooting;
     bool on_floor;
     bool on_ceiling;
     bool blocked_right;
@@ -139,6 +142,9 @@ PROJECTILE laser_projectiles[MAXPROJECTILES] = {0};
 int laser_projectiles_counter;
 DROP hearts[ENEMIES] = {0};
 PLAYER player;
+float player_sprite_timer = 0;
+int player_sprite_counter = 0;
+float player_shoot_timer = 0;
 
 //declares the global textures for the main menu
 Texture2D play_texture;
@@ -156,7 +162,12 @@ Texture2D background_texture;
 Texture2D floor_texture;
 Texture2D obstacle_texture;
 Texture2D enemy_texture;
-Texture2D player_texture;
+Texture2D player_idle_texture;
+Texture2D player_running_texture;
+Texture2D player_running_shoot_texture;
+Texture2D player_jumping_texture;
+Texture2D player_teleport_texture;
+
 Texture2D player_heart_texture;
 Texture2D laser_bullet_texture;
 Texture2D enemies_laser_bullet_texture;
@@ -188,7 +199,7 @@ int gaming(Camera2D *player_camera);
 void init_player_map(void);
 void draw_map(Color filter);
 void draw_background(Color filter);
-void draw_player(void);
+void draw_player(Color filter);
 void player_movement(void);
 void player_jump(int scale);
 void is_player_on_map(void);
@@ -216,6 +227,7 @@ void get_map_tiles_matrix(Rectangle map_tiles[MAPHEIGHT][MAPLENGTH], int do_spik
 bool check_map_tiles_collision(Rectangle map_tiles[MAPHEIGHT][MAPLENGTH], Rectangle object);
 void enemies_meet_player(void);
 bool enemy_looking_at_player(ENEMY en);
+void time_actions_update_bool(bool *update_var, float *timer, float goal_time);
 
 //main function
 int main(void) {
@@ -325,6 +337,10 @@ int pause_display(Camera2D player_camera) {
         draw_background(DARKGRAY);
         
         draw_map(DARKGRAY);
+        
+        draw_player(DARKGRAY);
+        
+        draw_enemies(DARKGRAY);
         
         draw_projectiles(laser_projectiles, DARKGRAY);
         
@@ -550,12 +566,8 @@ void draw_map(Color filter) {
                 case 'S': //draw the obstacle
                     DrawTextureV(obstacle_texture, drawing_position, filter);
                     break;
-                case 'P': //draw the player
-                    DrawTextureV(player_texture, player.position, filter);
-                    break;
             }
         }
-        draw_enemies(filter);
     }
 }
 
@@ -568,8 +580,7 @@ void init_player_map(void) {
     player.ammo_laser = PLAYERAMMO1;
     player.ammo_bazooka = PLAYERAMMO2;
     player.score = 0;
-    player.laser_shooting = 0;
-    player.bazooka_shooting = 0;
+    player.shooting = 0;
     player.blocked_left = 0;
     player.blocked_right = 0;
     player.on_floor = 0;
@@ -640,9 +651,11 @@ void load_textures(void) {
     
     enemy_texture = LoadTexture("/Users/melch/Desktop/projetos/projetos_faculdade/infman/resources/mobs/enemies.png");
     
-    Image beigeImage = GenImageColor(PLAYERSIZE, PLAYERSIZE, BEIGE);
-    player_texture = LoadTextureFromImage(beigeImage);
-    UnloadImage(beigeImage);
+    player_idle_texture = LoadTexture("/Users/melch/Desktop/projetos/projetos_faculdade/infman/resources/player/player_idle.png");
+    
+    player_running_texture = LoadTexture("/Users/melch/Desktop/Projetos/projetos_faculdade/infman/resources/player/infman_running.png");
+    
+    player_running_shoot_texture = LoadTexture("/Users/melch/Desktop/Projetos/projetos_faculdade/infman/resources/player/infman_running_shooting.png");
     
     player_heart_texture = LoadTexture("/Users/melch/Desktop/Projetos/projetos_faculdade/infman/resources/player/inf_man-heart.png");
     
@@ -653,7 +666,7 @@ void load_textures(void) {
 
 void unload_textures(void) {
     //main menu textures
-    UnloadTexture(player_texture);
+    UnloadTexture(play_texture);
     UnloadTexture(leaderboard_texture);
     UnloadTexture(exit_texture);
     UnloadTexture(leaderboard_table_texture);
@@ -668,7 +681,9 @@ void unload_textures(void) {
     UnloadTexture(floor_texture);
     UnloadTexture(obstacle_texture);
     UnloadTexture(enemy_texture);
-    UnloadTexture(player_texture);
+    UnloadTexture(player_idle_texture);
+    UnloadTexture(player_running_texture);
+    UnloadTexture(player_running_shoot_texture);
     UnloadTexture(player_heart_texture);
     UnloadTexture(laser_bullet_texture);
     UnloadTexture(enemies_laser_bullet_texture);
@@ -682,11 +697,66 @@ void draw_background(Color filter) {
     }
 }
 
-void draw_player(void) {
-    //6 possible sprites: stand, walking right/left, shooting laser/bazooka (but they can be combined)
-    if (player.speed.x == 0) {
+void draw_player(Color filter) {
+    int rec_redim = 0;
+    
+    Rectangle source_rectangle = {
+        0,
+        0,
+        player.size.x,
+        player.size.y
+    };
+    
+    player_sprite_timer += GetFrameTime();
+    if (player_sprite_timer >= SPRITEFRAMETIME) {
+        player_sprite_counter++;
         
+        if (player_sprite_counter > 2)
+            player_sprite_counter = 0;
+        
+        player_sprite_timer = 0;
     }
+    
+    if (player.shooting) {
+        rec_redim = PLAYERSIZESHOOTJUMP - PLAYERSIZE;
+        source_rectangle.width = PLAYERSIZESHOOTJUMP;
+    }
+    
+    source_rectangle.x = player_sprite_counter * (player.size.x + rec_redim);
+    
+    
+    if (player.speed.x < 0)
+        source_rectangle.y = player.size.y;
+    
+    
+    //if (player.speed.y != 0) {
+        
+        
+        
+    //} else {
+        
+        if (player.speed.x == 0) {
+            
+            source_rectangle.x = 0;
+            
+            if (player.shooting)
+                source_rectangle.x += 2*PLAYERSIZE;
+            else if (time(NULL) % 7 == 0)
+                source_rectangle.x += PLAYERSIZE;
+            
+            DrawTextureRec(player_idle_texture, source_rectangle, player.position, filter);
+            
+        } else {
+           
+            if (player.shooting)
+                DrawTextureRec(player_running_shoot_texture, source_rectangle, player.position, filter);
+            else
+                DrawTextureRec(player_running_texture, source_rectangle, player.position, filter);
+            
+        }
+        
+      
+    //}
 }
 
 void player_movement(void) {
@@ -708,7 +778,7 @@ void player_movement(void) {
     if (player.on_floor) {
         player.speed.y = 0.0f;
         
-        if (IsKeyDown(KEY_SPACE))
+        if (IsKeyDown(KEY_W))
             player_jump(1);
         
     } else if (player.speed.y < MAXFALLINGSPEED)
@@ -721,25 +791,17 @@ void player_jump(int scale) {
 
 void is_player_on_map(void) {
     
-    int out_of_limits_y = 0;
-    
     int horizontal_tile = floorf(player.position.x / TILESIZE);
     int vertical_tile = floorf(player.position.y / TILESIZE);
-    
-    if (vertical_tile <= 0 || vertical_tile >= MAPHEIGHT) {
-        out_of_limits_y = 1;
-    }
 
-    if (!out_of_limits_y && vertical_tile > 0) {
-        if (map[vertical_tile - 1][horizontal_tile] == 'O' || map[vertical_tile - 1][horizontal_tile + 1] == 'O') {
-            player.on_ceiling = 1;
-        } else
-            player.on_ceiling = 0;
-    } else
-        player.on_ceiling = 1;
-            
     if (vertical_tile == MAPHEIGHT + 6)
         player.hearts = 0;
+    
+    if (horizontal_tile <= 0)
+        player.blocked_left = 1;
+    
+    if (horizontal_tile >= MAPLENGTH - 1)
+        player.blocked_right = 1;
             
 }
 
@@ -817,10 +879,10 @@ void gaming_test(Camera2D *player_camera) {
 }
 
 int gaming(Camera2D *player_camera) {
-
-    is_player_on_map();
     
     is_player_blocked();
+    
+    is_player_on_map();
     
     BeginDrawing();
     
@@ -831,6 +893,10 @@ int gaming(Camera2D *player_camera) {
     draw_background(WHITE);
     
     draw_map(WHITE);
+    
+    draw_player(WHITE);
+    
+    draw_enemies(WHITE);
     
     draw_projectiles(laser_projectiles, WHITE);
     
@@ -859,8 +925,6 @@ int gaming(Camera2D *player_camera) {
     spike_damage();
     
     vulnerability_update();
-    
-    printf("%f\n", player.speed.y);
     
     return 0;
 }
@@ -1040,13 +1104,7 @@ void spike_damage(void) {
 }
 
 void vulnerability_update(void) {
-    if (invincibility_timer >= INVINCIBILITYTIME) {
-        player.vulnerable = 1;
-        invincibility_timer = 0;
-    } else if (!player.vulnerable) {
-        invincibility_timer += GetFrameTime();
-    } else
-        invincibility_timer = 0.0f;
+    time_actions_update_bool(&player.vulnerable, &invincibility_timer, INVINCIBILITYTIME);
 }
 
 void enemy_movement(void) {
@@ -1139,7 +1197,7 @@ void enemies_laser(void) {
 
 void player_laser(void) {
     
-    if (player.ammo_laser > 0 && IsKeyPressed(KEY_E)) {
+    if (player.ammo_laser > 0 && IsKeyPressed(KEY_SPACE)) {
         int current_direction;
         Rectangle current_bullet;
         
@@ -1164,7 +1222,17 @@ void player_laser(void) {
         
         laser_projectiles_counter++;
         player.ammo_laser--;
+        player.shooting = 1;
     }
+    
+    if (player_shoot_timer >= PLAYERSHOOTTIME) {
+        player.shooting = 0;
+        player_shoot_timer = 0;
+    } else if (player.shooting) {
+        player_shoot_timer += GetFrameTime();
+    } else
+        player_shoot_timer = 0.0f;
+
 }
 
 bool enemy_should_shoot(ENEMY en, int position_on_array) {
@@ -1263,3 +1331,14 @@ bool enemy_looking_at_player(ENEMY en) {
     
     return test;
 }
+
+void time_actions_update_bool(bool *update_var, float *timer, float goal_time) {
+    if (*timer >= goal_time) {
+        *update_var = 1;
+        *timer = 0;
+    } else if (!(*update_var)) {
+        *timer += GetFrameTime();
+    } else
+        *timer = 0.0f;
+}
+
