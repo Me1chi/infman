@@ -9,6 +9,7 @@
 #include <time.h>
 #include <math.h>
 #include <stdlib.h>
+#include <string.h>
 
 //screen, menus & button macros
 #define SCREENWIDTH 1200.0
@@ -59,7 +60,7 @@
 #define ENEMYMAXMOVERANGEX 4
 #define ENEMYMINMOVERANGEY 1
 #define ENEMYMAXMOVERANGEY 2
-#define CHANCEOFSHOOTING 2 //the number here is represented by its inverse! example 6 -> 1/6
+#define CHANCEOFSHOOTING 1 //the number here is represented by its inverse! example 6 -> 1/6
 #define ENEMYRELOADTIMEMIN 1
 #define ENEMYRELOADTIMEMAX 2
 #define ENEMYFOV 700.0
@@ -133,24 +134,41 @@ typedef struct {
 } PLAYER_ON_TOP;
 
 
-//global variables
-int current_screen = 2; //0 for gaming, 1 to pause and 2 to main_menu --> may be initialized as 2!
+///global variables declaration (BEGGINING)
+
+//game state flag variables
+int current_screen = 2; //0 for gaming, 1 to pause and 2 to main_menu --> may be initialized as 2! *NOTE: 3 got used to the winning screen!! So it is reserved too
+
 int do_not_exit = 1; //defined as 1, must only be modified by the main menu EXIT button or the ERROR HANDLING functions!!
+
+//important timers
 float invincibility_timer = 0;
-float enemies_shooting_timer[ENEMIES] = {0};
-PLAYER_ON_TOP top_players[TOPLAYERS]; //array containing the top players, filled by the reading of top_scores.bin
-char map[MAPHEIGHT][MAPLENGTH]; //matrix containing the map description, filled by the reading of terrain.txt
-ENEMY enemies[ENEMIES] = {0};
-int enemies_counter;
-PROJECTILE laser_projectiles[MAXPROJECTILES] = {0};
-int laser_projectiles_counter;
-DROP hearts[ENEMIES] = {0};
-PLAYER player;
 float player_sprite_timer = 0;
-int player_sprite_counter = 0;
 float player_shoot_timer = 0;
+float enemies_shooting_timer[ENEMIES] = {0};
+
+//counters and arrays (related when together)
+int enemies_counter;
+ENEMY enemies[ENEMIES] = {0};
+
+int laser_projectiles_counter;
+PROJECTILE laser_projectiles[MAXPROJECTILES] = {0};
+
+PLAYER_ON_TOP top_players[TOPLAYERS]; //array containing the top players, filled by the reading of top_scores.bin
+
+DROP ammo[ENEMIES] = {0};
+
+int player_sprite_counter = 0;
+
+//the player and the map
+PLAYER player;
+char map[MAPHEIGHT][MAPLENGTH]; //matrix containing the map description, filled by the reading of terrain.txt
+
+///global variables declaration (ENDING)
+
 
 //declares the global textures for the main menu
+Texture2D infman_logo_texture;
 Texture2D play_texture;
 Texture2D leaderboard_texture;
 Texture2D exit_texture;
@@ -161,22 +179,32 @@ Texture2D leaderboard_main_menu_texture;
 Texture2D resume_texture;
 Texture2D main_menu_texture;
 
-//declares the global textures for the gaming screen
+///declares the global textures for the game itself (BEGGINING)
+
+//scenario related textures
 Texture2D background_texture;
 Texture2D floor_texture;
 Texture2D obstacle_texture;
-Texture2D enemy_texture;
+
+//player related textures
 Texture2D player_idle_texture;
 Texture2D player_running_texture;
 Texture2D player_running_shoot_texture;
 Texture2D player_jumping_texture;
 Texture2D player_teleport_texture;
-
 Texture2D player_heart_texture;
+
+//enemies related textures
+Texture2D enemy_texture;
+
+//projectiles related textures
 Texture2D laser_bullet_texture;
 Texture2D enemies_laser_bullet_texture;
 
-//functions declarations (organized)
+///declares the global textures for the game itself (ENDING)
+
+
+///functions declaration (BEGGINING)
 
 //textures related functions
 void load_textures(void); //load all the game textures
@@ -184,6 +212,7 @@ void unload_textures(void); //unload all the game textures
 
 //binaries related functions
 void bin_to_top_players(void); //reads a binary file containing the top players information
+void top_players_to_bin(void);
 
 //text related functions
 Vector2 txt_to_map(void); //reads a binary file containing the map information and returns the player's initial position
@@ -209,6 +238,7 @@ void draw_player(Color filter);
 void draw_enemies(Color filter);
 void draw_player_hearts(int hearts, Camera2D *player_camera);
 void draw_projectiles(PROJECTILE projectile_array[], Color filter);
+void draw_level_ending_subtitles(Camera2D player_camera, Color filter);
 
 //player mechanics/update functions
 void init_player_map(void);
@@ -223,7 +253,8 @@ bool projectile_player_hit_test(PROJECTILE proj);
 void player_damage(char source);
 void player_death_test(Camera2D player_camera);
 void player_death(Camera2D player_camera);
-void player_win(void);
+bool is_player_on_ending_platform(void);
+void player_win(Camera2D player_camera, Color filter);
 
 //enemies mechanics/update functions
 void enemy_movement(void);
@@ -234,12 +265,22 @@ void enemies_laser(void);
 bool projectile_enemy_hit_test(PROJECTILE projectile, ENEMY enemy);
 void enemies_drop_manager(void);
 
+//top scores updating functions
+void infman_dance(Vector2 position, Color filter);
+PLAYER_ON_TOP get_user_name_score(Camera2D player_camera);
+bool input_array_writer(char *array, int *position);
+int compare_scores_array(PLAYER_ON_TOP pl);
+void applies_array_modifications(PLAYER_ON_TOP pl);
+
 //miscellaneous
+void laser_shoot(void);
 int roll_a_dice(int max_number);
 void time_actions_update_bool(bool *update_var, float *timer, float goal_time);
 void get_map_tiles_matrix(Rectangle map_tiles[MAPHEIGHT][MAPLENGTH], int do_spikes_matter);
 bool check_map_tiles_collision(Rectangle map_tiles[MAPHEIGHT][MAPLENGTH], Rectangle object);
+void get_tile_on_matrix(int *hor_tile, int *ver_tile, Rectangle object);
 
+///functions declartion (ENDING)
 
 
 //main function
@@ -279,7 +320,6 @@ int main(void) {
         main_menu_test();
         pause(camera);
         gaming_test(&camera);
-        //printf("x = %f | y = %f\n", player.position.x, player.position.y);
     }
     
     //textures unloading
@@ -290,6 +330,65 @@ int main(void) {
     
     //closes the window
     CloseWindow();
+    
+    return 0;
+}
+
+void gaming_test(Camera2D *player_camera) {
+    //tests if the game must run
+    if (current_screen == 0)
+        gaming(player_camera);
+}
+
+int gaming(Camera2D *player_camera) {
+    
+    is_player_blocked();
+    
+    is_player_on_map();
+    
+    BeginDrawing();
+    
+    ClearBackground(RAYWHITE);
+    
+    BeginMode2D(*player_camera);
+    
+    draw_background(WHITE);
+    
+    draw_map(WHITE);
+    
+    draw_projectiles(laser_projectiles, WHITE);
+    
+    draw_player(WHITE);
+    
+    draw_enemies(WHITE);
+    
+    draw_player_hearts(player.hearts, player_camera);
+    
+    player_win(*player_camera, WHITE);
+    
+    laser_shoot();
+    
+    EndMode2D();
+    
+    EndDrawing();
+    
+    player_movement();
+    
+    player_laser();
+    
+    enemy_movement();
+    
+    enemies_laser();
+    
+    enemies_drop_manager();
+    
+    camera_update(player_camera);
+    
+    player_death_test(*player_camera);
+    
+    spike_damage();
+    
+    vulnerability_update();
     
     return 0;
 }
@@ -356,6 +455,10 @@ int pause_display(Camera2D player_camera) {
         draw_enemies(DARKGRAY);
         
         draw_projectiles(laser_projectiles, DARKGRAY);
+        
+        draw_player_hearts(player.hearts, &player_camera);
+        
+        draw_level_ending_subtitles(player_camera, DARKGRAY);
         
         //draw resume buttons
         if (resume_hovering == 1)
@@ -428,14 +531,19 @@ int main_menu_display(void) {
         
         if (CheckCollisionPointRec(mouse_pointer, exit)) {
             exit_hovering = 1;
-            if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON))
+            if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
                 do_not_exit = 0; //makes the game quit
+                top_players_to_bin();
+            }
+                
         }
         
         //graphical part of the main menu
         BeginDrawing();
         
-        ClearBackground(RAYWHITE);
+        ClearBackground(DARKGRAY);
+        
+        DrawTexture(infman_logo_texture, SCREENWIDTH/2 - 495/2, 97/2, WHITE);
         
         //draw play buttons
         if (play_hovering == 1)
@@ -456,8 +564,9 @@ int main_menu_display(void) {
             DrawTexture(exit_texture, exit.x, exit.y, WHITE);
         
         //add text labels for the buttons
-        DrawText("PLAY", play.x + 45, play.y + 25, FONTSIZE, BLACK);
-        DrawText("LEADERBOARD", leaderboard.x + 10, leaderboard.y + 25, FONTSIZE*19/20, BLACK);
+        DrawText("PLAY", play.x + 47.5, play.y + 27.5, FONTSIZE, BLACK);
+        DrawText("LEADER", leaderboard.x + 35, leaderboard.y + 20.5, FONTSIZE, BLACK);
+        DrawText("BOARD", leaderboard.x + 35 + FONTSIZE/4, leaderboard.y + 20.5 + FONTSIZE, FONTSIZE, BLACK);
         DrawText("EXIT", exit.x + 50, exit.y + 25, FONTSIZE, BLACK);
 
         EndDrawing();
@@ -488,7 +597,7 @@ void leaderboard_display(void) {
         
         BeginDrawing();
         
-        ClearBackground(RAYWHITE);
+        ClearBackground(DARKGRAY);
         
         if (hovering == 1)
             DrawTexture(leaderboard_main_menu_texture, main_menu.x, main_menu.y, GRAY);
@@ -510,7 +619,8 @@ void leaderboard_display(void) {
             DrawText(score_string, leaderboard_table.x + BUTTONWIDTH*2 - 60, leaderboard_table.y + FONTSIZE + i*FONTSIZE, FONTSIZE/5*4, BLACK);
         }
         
-        DrawText("MAIN MENU", main_menu.x + 15, main_menu.y + 25, FONTSIZE, BLACK);
+        DrawText("MAIN", main_menu.x + 45, main_menu.y + 17.5, FONTSIZE, BLACK);
+        DrawText("MENU", main_menu.x + 45, main_menu.y + 17.5 + FONTSIZE, FONTSIZE, BLACK);
         
         EndDrawing();
     }
@@ -622,39 +732,34 @@ void init_player_map(void) {
         enemies[i].met_player = 0;
         
         //drops
-        hearts[i].state = 0;
-        hearts[i].position = (Vector2){0.0, 0.0};
-        hearts[i].drop_type = 0;
+        ammo[i].state = 0;
+        ammo[i].position = (Vector2){0.0, 0.0};
+        ammo[i].drop_type = 0;
     }
 }
 
 void load_textures(void) {
     
     //main menu textures
-    Image redImage = GenImageColor(BUTTONWIDTH, BUTTONHEIGHT, RED);
-    play_texture = LoadTextureFromImage(redImage);
-    UnloadImage(redImage);
     
-    Image yellowImage = GenImageColor(BUTTONWIDTH, BUTTONHEIGHT, YELLOW);
-    leaderboard_texture = LoadTextureFromImage(yellowImage);
-    UnloadImage(yellowImage);
+    infman_logo_texture = LoadTexture("/Users/melch/Desktop/Projetos/projetos_faculdade/infman/resources/map/inf_man_logo.png");
     
-    Image orangeImage = GenImageColor(BUTTONWIDTH, BUTTONHEIGHT, ORANGE);
-    exit_texture = LoadTextureFromImage(orangeImage);
-    UnloadImage(orangeImage);
+    play_texture = LoadTexture("/Users/melch/Desktop/Projetos/projetos_faculdade/infman/resources/map/button0.png");
     
-    Image violetImage = GenImageColor(BUTTONWIDTH*2, BUTTONHEIGHT*4, VIOLET);
-    leaderboard_table_texture = LoadTextureFromImage(violetImage);
-    UnloadImage(violetImage);
+    leaderboard_texture = LoadTexture("/Users/melch/Desktop/Projetos/projetos_faculdade/infman/resources/map/button0.png");
     
-    Image greenImage1 = GenImageColor(BUTTONWIDTH, BUTTONHEIGHT, GREEN);
-    leaderboard_main_menu_texture = LoadTextureFromImage(greenImage1);
-    UnloadImage(greenImage1);
+    exit_texture = LoadTexture("/Users/melch/Desktop/Projetos/projetos_faculdade/infman/resources/map/button0.png");
+    
+    Image infmanblueImage = GenImageColor(BUTTONWIDTH*2, BUTTONHEIGHT*4, INFMANBLUE1);
+    leaderboard_table_texture = LoadTextureFromImage(infmanblueImage);
+    UnloadImage(infmanblueImage);
+    
+    leaderboard_main_menu_texture = LoadTexture("/Users/melch/Desktop/Projetos/projetos_faculdade/infman/resources/map/button0.png");
     
     //pause menu textures
-    resume_texture = LoadTexture("/Users/melch/Desktop/Projetos/projetos_faculdade/infman/resources/map/button1.png");
+    resume_texture = LoadTexture("/Users/melch/Desktop/Projetos/projetos_faculdade/infman/resources/map/button1_esp.png");
     
-    main_menu_texture = LoadTexture("/Users/melch/Desktop/Projetos/projetos_faculdade/infman/resources/map/button1.png");
+    main_menu_texture = LoadTexture("/Users/melch/Desktop/Projetos/projetos_faculdade/infman/resources/map/button1_esp.png");
     
     //gaming textures
     background_texture = LoadTexture("/Users/melch/Desktop/projetos/projetos_faculdade/infman/resources/map/background.png");
@@ -682,6 +787,7 @@ void load_textures(void) {
 
 void unload_textures(void) {
     //main menu textures
+    UnloadTexture(infman_logo_texture);
     UnloadTexture(play_texture);
     UnloadTexture(leaderboard_texture);
     UnloadTexture(exit_texture);
@@ -725,7 +831,8 @@ void draw_player(Color filter) {
     
     player_sprite_timer += GetFrameTime();
     if (player_sprite_timer >= SPRITEFRAMETIME) {
-        player_sprite_counter++;
+        if (player.hearts > 0)
+            player_sprite_counter++;
         
         if (player_sprite_counter > 2)
             player_sprite_counter = 0;
@@ -785,8 +892,6 @@ void draw_player(Color filter) {
                 DrawTextureRec(player_running_texture, source_rectangle, player.position, filter);
             
         }
-        
-      
     }
 }
 
@@ -822,9 +927,15 @@ void player_jump(int scale) {
 
 void is_player_on_map(void) {
     
-    int horizontal_tile = floorf(player.position.x / TILESIZE);
-    int vertical_tile = floorf(player.position.y / TILESIZE);
-
+    int horizontal_tile, vertical_tile;
+    
+    get_tile_on_matrix(&horizontal_tile, &vertical_tile, (Rectangle){
+        player.position.x,
+        player.position.y,
+        player.size.x,
+        player.size.y
+    });
+    
     if (vertical_tile == MAPHEIGHT + 6)
         player.hearts = 0;
     
@@ -903,63 +1014,6 @@ void is_player_blocked(void) {
     
 }
 
-void gaming_test(Camera2D *player_camera) {
-    //tests if the game must run
-    if (current_screen == 0)
-        gaming(player_camera);
-}
-
-int gaming(Camera2D *player_camera) {
-    
-    is_player_blocked();
-    
-    is_player_on_map();
-    
-    BeginDrawing();
-    
-    ClearBackground(RAYWHITE);
-    
-    BeginMode2D(*player_camera);
-    
-    draw_background(WHITE);
-    
-    draw_map(WHITE);
-    
-    draw_projectiles(laser_projectiles, WHITE);
-    
-    draw_player(WHITE);
-    
-    draw_enemies(WHITE);
-    
-    draw_player_hearts(player.hearts, player_camera);
-    
-    laser_shoot();
-    
-    EndMode2D();
-    
-    EndDrawing();
-    
-    player_movement();
-    
-    player_laser();
-    
-    enemy_movement();
-    
-    enemies_laser();
-    
-    enemies_drop_manager();
-    
-    camera_update(player_camera);
-    
-    player_death_test(*player_camera);
-    
-    spike_damage();
-    
-    vulnerability_update();
-    
-    return 0;
-}
-
 void camera_update(Camera2D *camera) {
     if (!current_screen || current_screen == 1) {
         camera->target.x = player.position.x;
@@ -1007,6 +1061,12 @@ void player_death(Camera2D player_camera) {
         
         draw_map(DARKGRAY);
         
+        draw_projectiles(laser_projectiles, DARKGRAY);
+        
+        draw_player(DARKGRAY);
+        
+        draw_enemies(DARKGRAY);
+        
         if (hovering)
             DrawTexture(main_menu_texture, main_menu.x, main_menu.y, GRAY);
         else
@@ -1024,10 +1084,6 @@ void player_death(Camera2D player_camera) {
         
         EndDrawing();
     }
-}
-
-void player_win(void) {
-    
 }
 
 void player_damage(char source) {
@@ -1124,8 +1180,8 @@ void draw_projectiles(PROJECTILE projectile_array[], Color filter) {
 void spike_damage(void) {
     if (player.vulnerable) {
         int horizontal_tile = floorf((player.position.x)/TILESIZE);
-        int horizontal_tile2 = floorf((player.position.x + PLAYERSIZE/2)/TILESIZE);
-        int vertical_tile = floorf((player.position.y + PLAYERSIZE)/TILESIZE);
+        int horizontal_tile2 = floorf((player.position.x + 2*PLAYERSIZE/3)/TILESIZE);
+        int vertical_tile = floorf((player.position.y + PLAYERSIZE - 4)/TILESIZE);
         
         if (map[vertical_tile][horizontal_tile] == 'S' || map[vertical_tile][horizontal_tile2] == 'S' || map[vertical_tile - 1][horizontal_tile] == 'S' || map[vertical_tile - 1][horizontal_tile2] == 'S') {
             player_jump(1.2);
@@ -1142,16 +1198,31 @@ void enemy_movement(void) {
     enemies_meet_player();
     
     Rectangle map_tiles[MAPHEIGHT][MAPLENGTH];
-    
     get_map_tiles_matrix(map_tiles, 0);
     
+    int horizontal_tile = 0;
+    int vertical_tile = 0;
+    
     for (int i = 0; i < ENEMIES; i++) {
+        get_tile_on_matrix(&horizontal_tile, &vertical_tile, enemies[i].position_size);
+        
+        if (horizontal_tile <= 0 || horizontal_tile >= MAPLENGTH - 1)
+            enemies[i].speed.x = -enemies[i].speed.x;
+        
         if (fabsf(enemies[i].position_size.x - enemies[i].pivot.x) > enemies[i].movement_range.x)
             enemies[i].speed.x = -enemies[i].speed.x;
+        
+        
+        if (vertical_tile <= 0 || vertical_tile >= MAPHEIGHT) {
+            enemies[i].speed.y = -enemies[i].speed.y;
+            if (vertical_tile <= 4)
+                enemies[i].position_size.y = enemies[i].pivot.y;
+        }
         
         if (fabsf(enemies[i].position_size.y - enemies[i].pivot.y) > enemies[i].movement_range.y ||
             check_map_tiles_collision(map_tiles, enemies[i].position_size))
             enemies[i].speed.y = -enemies[i].speed.y;
+        
         
         if (enemies[i].hearts <= 0) {
             enemies[i].pivot = (Vector2){enemies[i].pivot.x, enemies[i].pivot.y};
@@ -1178,8 +1249,8 @@ void enemies_drop_manager(void) {
                 player.score += 50;
             else
                 player.score += 100;
-            hearts[i].state = 1;
-            hearts[i].position = enemies[i].pivot;
+            ammo[i].state = 1;
+            ammo[i].position = enemies[i].pivot;
             enemies[i].alive = 0;
         }
     }
@@ -1383,4 +1454,212 @@ void time_actions_update_bool(bool *update_var, float *timer, float goal_time) {
 
 void player_bazooka(void) {
     
+}
+
+void get_tile_on_matrix(int *hor_tile, int *ver_tile, Rectangle object) {
+    *hor_tile = floorf(object.x / TILESIZE);
+    *ver_tile = floorf(object.y / TILESIZE);
+}
+
+void player_win(Camera2D player_camera, Color filter) {
+    if (is_player_on_ending_platform()) {
+        draw_level_ending_subtitles(player_camera, filter);
+        if(IsKeyPressed(KEY_L))
+            current_screen = 3;
+    }
+    
+    PLAYER_ON_TOP player_on_top = {0, 0};
+    
+    while (current_screen == 3) {
+        player_on_top = get_user_name_score(player_camera);
+    }
+    
+    applies_array_modifications(player_on_top);
+    
+}
+
+bool is_player_on_ending_platform(void) {
+    
+    Rectangle player_rect = {
+        player.position.x,
+        player.position.y,
+        player.size.x,
+        player.size.y
+    };
+    
+    Rectangle ending_platform_rect = {0, 0, 0, 0};
+    
+    for (int i = 0; i < MAPHEIGHT; i++) {
+        for (int j = 0; j < MAPLENGTH; j++) {
+            if (map[i][j] == 'L')
+                ending_platform_rect = (Rectangle) {
+                    TILESIZE * (j - 1),
+                    TILESIZE * (i - 1),
+                    TILESIZE * 3,
+                    TILESIZE * 2
+                };
+        }
+    }
+    
+    return CheckCollisionRecs(ending_platform_rect, player_rect);
+}
+
+void draw_level_ending_subtitles(Camera2D player_camera, Color filter) {
+    
+    if (is_player_on_ending_platform()) {
+        
+        char player_score_string_comp[40] = "WITH YOUR SCORE -> ";
+        
+        char player_score_string[9];
+        
+        sprintf(player_score_string, "%d", player.score);
+        
+        strcat(player_score_string_comp, player_score_string);
+        
+        EndMode2D();
+        
+        DrawTextEx(GetFontDefault(), "PRESS  L  TO END THIS LEVEL", (Vector2){SCREENWIDTH/4, SCREENHEIGHT/4}, 2*FONTSIZE, 2, BLACK);
+        DrawTextEx(GetFontDefault(), player_score_string_comp, (Vector2){SCREENWIDTH/4, SCREENHEIGHT/4 + 2*FONTSIZE}, 2*FONTSIZE, 2, BLACK);
+        
+        BeginMode2D(player_camera);
+    }
+}
+
+PLAYER_ON_TOP get_user_name_score(Camera2D player_camera) {
+    
+    EndMode2D();
+    
+    EndDrawing();
+    
+    char input_buffer[MAXNAME + 1] = {0};
+    char player_score_display[50] = "YOUR SCORE WAS -> ";
+    char player_score_string[10];
+    
+    sprintf(player_score_string, "%d", player.score);
+    
+    strcat(player_score_display, player_score_string);
+    
+    int name_confirmed = 0;
+    
+    int letter_position = 0;
+    
+    PLAYER_ON_TOP player_to_be_on_top;
+    
+    while (!name_confirmed) {
+        
+        BeginDrawing();
+        
+        ClearBackground(INFMANBLUE1);
+        
+        DrawText("YOU WIN!", SCREENWIDTH/3, SCREENHEIGHT/10, 2*FONTSIZE, BLACK);
+        DrawText(player_score_display, SCREENWIDTH/3, SCREENHEIGHT/10 + 3*FONTSIZE, 2*FONTSIZE, BLACK);
+        DrawText("INSERT YOU NAME: ", SCREENWIDTH/3, SCREENHEIGHT/10 + 6*FONTSIZE, 2*FONTSIZE, BLACK);
+        DrawText(input_buffer, SCREENWIDTH/3, SCREENHEIGHT/10 + 9*FONTSIZE, 2*FONTSIZE, DARKGRAY);
+        
+        infman_dance((Vector2){SCREENWIDTH/3, 2*SCREENHEIGHT/3}, WHITE);
+        
+        infman_dance((Vector2){SCREENWIDTH/3, 2*SCREENHEIGHT/3 + 3*PLAYERSIZE}, WHITE);
+        
+        infman_dance((Vector2){SCREENWIDTH/3, 2*SCREENHEIGHT/3 + 6*PLAYERSIZE}, WHITE);
+        
+        infman_dance((Vector2){2*SCREENWIDTH/3, 2*SCREENHEIGHT/3}, WHITE);
+        
+        infman_dance((Vector2){2*SCREENWIDTH/3, 2*SCREENHEIGHT/3 + 3*PLAYERSIZE}, WHITE);
+        
+        infman_dance((Vector2){2*SCREENWIDTH/3, 2*SCREENHEIGHT/3 + 6*PLAYERSIZE}, WHITE);
+        
+        EndDrawing();
+        
+        if (input_array_writer(input_buffer, &letter_position)) {
+            name_confirmed = 1;
+            current_screen = 2;
+        }
+    }
+    
+    strcpy(player_to_be_on_top.name, input_buffer);
+    player_to_be_on_top.score = player.score;
+    
+    return player_to_be_on_top;
+}
+
+bool input_array_writer(char *array, int *position) {
+    char letter_input;
+    
+    letter_input = GetKeyPressed();
+
+    if (letter_input >= 32 && letter_input <= 125 && *position < MAXNAME && letter_input != KEY_EQUAL) {
+            
+        array[*position] = letter_input;
+                        
+        array[*position+1] = '\0';
+            
+        (*position)++;
+    }
+    
+    if (IsKeyPressed(KEY_BACKSPACE)) {
+        if (*position != 0)
+            (*position)--;
+        array[*position] = '\0';
+    }
+
+    
+    return (letter_input == KEY_EQUAL);
+}
+                        
+void infman_dance(Vector2 position, Color filter) {
+    
+    player_sprite_timer += GetFrameTime();
+    if (player_sprite_timer >= SPRITEFRAMETIME) {
+        player_sprite_counter = (rand() % (3));
+        player_sprite_timer = 0;
+    }
+    
+    Rectangle source_rectangle = {
+        0,
+        0,
+        PLAYERSIZESHOOTJUMP,
+        PLAYERSIZE
+    };
+    
+    source_rectangle.x = player_sprite_counter * PLAYERSIZESHOOTJUMP;
+    if (time(NULL) % 2 == 0)
+        source_rectangle.y = PLAYERSIZE;
+    
+    DrawTextureRec(player_running_shoot_texture, source_rectangle, position, filter);
+    
+}
+
+void applies_array_modifications(PLAYER_ON_TOP pl) {
+    int index = 0;
+    
+    index = compare_scores_array(pl);
+    
+    for (int i = TOPLAYERS - 1; i > index; i--) {
+        top_players[i] = top_players[i - 1];
+    }
+    
+    top_players[index] = pl;
+}
+
+int compare_scores_array(PLAYER_ON_TOP pl) {
+    int index = 0;
+    
+    while (index < TOPLAYERS) {
+        if (top_players[index].score < pl.score)
+            break;
+        index++;
+    }
+    
+    return index;
+}
+
+void top_players_to_bin(void) {
+    FILE *fileptr;
+    
+    if ((fileptr = fopen("/Users/melch/Desktop/Projetos/projetos_faculdade/infman/infman/bin/top_scores.bin", "wb"))) {
+        fwrite(top_players, sizeof(PLAYER_ON_TOP), TOPLAYERS, fileptr);
+    } else
+        do_not_exit = 0;
+    
+    fclose(fileptr);
 }
