@@ -200,38 +200,47 @@ int pause_display(Camera2D player_camera); //displays the pause menu with the op
 //gaming related functions
 void gaming_test(Camera2D *player_camera);
 int gaming(Camera2D *player_camera);
-void init_player_map(void);
+
+//drawing & camera functions
+void camera_update(Camera2D *camera);
 void draw_map(Color filter);
 void draw_background(Color filter);
 void draw_player(Color filter);
+void draw_enemies(Color filter);
+void draw_player_hearts(int hearts, Camera2D *player_camera);
+void draw_projectiles(PROJECTILE projectile_array[], Color filter);
+
+//player mechanics/update functions
+void init_player_map(void);
+void is_player_blocked(void);
+void is_player_on_map(void);
 void player_movement(void);
 void player_jump(int scale);
-void is_player_on_map(void);
-void camera_update(Camera2D *camera);
+void player_laser(void);
+void vulnerability_update(void);
+void spike_damage(void);
+bool projectile_player_hit_test(PROJECTILE proj);
+void player_damage(char source);
 void player_death_test(Camera2D player_camera);
 void player_death(Camera2D player_camera);
 void player_win(void);
-void player_damage(char source);
-void draw_player_hearts(int hearts, Camera2D *player_camera);
-void laser_shoot(void);
-bool projectile_enemy_hit_test(PROJECTILE projectile, ENEMY enemy);
-void draw_projectiles(PROJECTILE projectile_array[], Color filter);
-void vulnerability_update(void);
-void spike_damage(void);
+
+//enemies mechanics/update functions
 void enemy_movement(void);
-void draw_enemies(Color filter);
-void enemies_drop_manager(void);
-void player_laser(void);
-void enemies_laser(void);
-bool enemy_should_shoot(ENEMY en, int position_on_array);
-int roll_a_dice(int max_number);
-bool projectile_player_hit_test(PROJECTILE proj);
-void is_player_blocked(void);
-void get_map_tiles_matrix(Rectangle map_tiles[MAPHEIGHT][MAPLENGTH], int do_spikes_matter);
-bool check_map_tiles_collision(Rectangle map_tiles[MAPHEIGHT][MAPLENGTH], Rectangle object);
 void enemies_meet_player(void);
 bool enemy_looking_at_player(ENEMY en);
+bool enemy_should_shoot(ENEMY en, int position_on_array);
+void enemies_laser(void);
+bool projectile_enemy_hit_test(PROJECTILE projectile, ENEMY enemy);
+void enemies_drop_manager(void);
+
+//miscellaneous
+int roll_a_dice(int max_number);
 void time_actions_update_bool(bool *update_var, float *timer, float goal_time);
+void get_map_tiles_matrix(Rectangle map_tiles[MAPHEIGHT][MAPLENGTH], int do_spikes_matter);
+bool check_map_tiles_collision(Rectangle map_tiles[MAPHEIGHT][MAPLENGTH], Rectangle object);
+
+
 
 //main function
 int main(void) {
@@ -1372,3 +1381,6 @@ void time_actions_update_bool(bool *update_var, float *timer, float goal_time) {
         *timer = 0.0f;
 }
 
+void player_bazooka(void) {
+    
+}
