@@ -51,10 +51,14 @@
 #define ENEMIES 5
 #define ENEMYHEARTS 2
 #define ENEMYSIZE1 20
-#define ENEMYMINSPEED 0.1
-#define ENEMYMAXSPEED 0.5
-#define ENEMYMINMOVERANGE 2
-#define ENEMYMAXMOVERANGE 4
+#define ENEMYMINSPEEDX 0.1
+#define ENEMYMAXSPEEDX 0.5
+#define ENEMYMINSPEEDY 0.01
+#define ENEMYMAXSPEEDY 0.05
+#define ENEMYMINMOVERANGEX 2
+#define ENEMYMAXMOVERANGEX 4
+#define ENEMYMINMOVERANGEY 1
+#define ENEMYMAXMOVERANGEY 2
 #define CHANCEOFSHOOTING 2 //the number here is represented by its inverse! example 6 -> 1/6
 #define ENEMYRELOADTIMEMIN 1
 #define ENEMYRELOADTIMEMAX 2
@@ -92,10 +96,10 @@ typedef struct {
     Rectangle position_size;
     Vector2 speed;
     Vector2 pivot;
+    Vector2 movement_range;
     
     //scalar quantities
     int hearts;
-    int movement_range;
     int reload_time;
     
     //state testing
@@ -596,9 +600,10 @@ void init_player_map(void) {
     //enemies and its drops attributes
     for (int i = 0; i < ENEMIES; i++) {
         //enemies
-        enemies[i].speed.x = (float)(ENEMYMINSPEED*10 + (rand() % (int)(ENEMYMAXSPEED*10 - ENEMYMINSPEED*10 + 1))/10.0);
-        enemies[i].speed.y = 0.0;
-        enemies[i].movement_range = TILESIZE*(ENEMYMINMOVERANGE + (rand() % (ENEMYMAXMOVERANGE - ENEMYMINMOVERANGE + 1)));
+        enemies[i].speed.x = (float)(ENEMYMINSPEEDX*10 + (rand() % (int)(ENEMYMAXSPEEDX*10 - ENEMYMINSPEEDX*10 + 1))/10.0);
+        enemies[i].speed.y = (float)(ENEMYMINSPEEDY*10 + (rand() % (int)(ENEMYMAXSPEEDY*10 - ENEMYMINSPEEDY*10 + 1))/10.0);;
+        enemies[i].movement_range.x = TILESIZE*(ENEMYMINMOVERANGEX + (rand() % (ENEMYMAXMOVERANGEX - ENEMYMINMOVERANGEX + 1)));
+        enemies[i].movement_range.y = TILESIZE*(ENEMYMINMOVERANGEY + (rand() % (ENEMYMAXMOVERANGEY - ENEMYMINMOVERANGEY + 1)));
         enemies[i].hearts = ENEMYHEARTS;
         enemies[i].blocked_left = 0;
         enemies[i].blocked_right = 0;
@@ -651,11 +656,13 @@ void load_textures(void) {
     
     enemy_texture = LoadTexture("/Users/melch/Desktop/projetos/projetos_faculdade/infman/resources/mobs/enemies.png");
     
-    player_idle_texture = LoadTexture("/Users/melch/Desktop/projetos/projetos_faculdade/infman/resources/player/player_idle.png");
+    player_idle_texture = LoadTexture("/Users/melch/Desktop/projetos/projetos_faculdade/infman/resources/player/infman_idle.png");
     
     player_running_texture = LoadTexture("/Users/melch/Desktop/Projetos/projetos_faculdade/infman/resources/player/infman_running.png");
     
     player_running_shoot_texture = LoadTexture("/Users/melch/Desktop/Projetos/projetos_faculdade/infman/resources/player/infman_running_shooting.png");
+    
+    player_jumping_texture = LoadTexture("/Users/melch/Desktop/Projetos/projetos_faculdade/infman/resources/player/infman_jumping.png");
     
     player_heart_texture = LoadTexture("/Users/melch/Desktop/Projetos/projetos_faculdade/infman/resources/player/inf_man-heart.png");
     
@@ -722,6 +729,11 @@ void draw_player(Color filter) {
         source_rectangle.width = PLAYERSIZESHOOTJUMP;
     }
     
+    if (!player.on_floor) {
+        source_rectangle.width = PLAYERSIZESHOOTJUMP;
+        source_rectangle.height = PLAYERSIZESHOOTJUMP;
+    }
+    
     source_rectangle.x = player_sprite_counter * (player.size.x + rec_redim);
     
     
@@ -729,11 +741,21 @@ void draw_player(Color filter) {
         source_rectangle.y = player.size.y;
     
     
-    //if (player.speed.y != 0) {
+    if (player.speed.y != 0) {
         
+        if (player.shooting)
+            source_rectangle.x = PLAYERSIZESHOOTJUMP;
+        else
+            source_rectangle.x = 0;
         
+        if (player.speed.x < 0)
+            source_rectangle.y = PLAYERSIZESHOOTJUMP;
+        else
+            source_rectangle.y = 0;
+    
+        DrawTextureRec(player_jumping_texture, source_rectangle, player.position, filter);
         
-    //} else {
+    } else {
         
         if (player.speed.x == 0) {
             
@@ -756,7 +778,7 @@ void draw_player(Color filter) {
         }
         
       
-    //}
+    }
 }
 
 void player_movement(void) {
@@ -894,11 +916,11 @@ int gaming(Camera2D *player_camera) {
     
     draw_map(WHITE);
     
+    draw_projectiles(laser_projectiles, WHITE);
+    
     draw_player(WHITE);
     
     draw_enemies(WHITE);
-    
-    draw_projectiles(laser_projectiles, WHITE);
     
     draw_player_hearts(player.hearts, player_camera);
     
@@ -1110,9 +1132,17 @@ void vulnerability_update(void) {
 void enemy_movement(void) {
     enemies_meet_player();
     
+    Rectangle map_tiles[MAPHEIGHT][MAPLENGTH];
+    
+    get_map_tiles_matrix(map_tiles, 0);
+    
     for (int i = 0; i < ENEMIES; i++) {
-        if (fabsf(enemies[i].position_size.x - enemies[i].pivot.x) > enemies[i].movement_range)
+        if (fabsf(enemies[i].position_size.x - enemies[i].pivot.x) > enemies[i].movement_range.x)
             enemies[i].speed.x = -enemies[i].speed.x;
+        
+        if (fabsf(enemies[i].position_size.y - enemies[i].pivot.y) > enemies[i].movement_range.y ||
+            check_map_tiles_collision(map_tiles, enemies[i].position_size))
+            enemies[i].speed.y = -enemies[i].speed.y;
         
         if (enemies[i].hearts <= 0) {
             enemies[i].pivot = (Vector2){enemies[i].pivot.x, enemies[i].pivot.y};
@@ -1214,7 +1244,7 @@ void player_laser(void) {
         } else
             current_bullet.x = player.position.x;
         
-        current_bullet.y = player.position.y + PLAYERSIZE/2;
+        current_bullet.y = player.position.y + 9;
         current_bullet.width = PROJECTILESIZE;
         current_bullet.height = PROJECTILESIZE/2;
         
