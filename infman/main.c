@@ -207,6 +207,8 @@ Texture2D enemy_texture;
 Texture2D laser_bullet_texture;
 Texture2D enemies_laser_bullet_texture;
 Texture2D bazooka_bullet_texture;
+Texture2D laser_ammo_texture;
+Texture2D bazooka_ammo_texture;
 
 ///declares the global textures for the game itself (ENDING)
 
@@ -243,7 +245,7 @@ void draw_map(Color filter); //draws scenario tiles, obstacles and everything st
 void draw_background(Color filter); //draws a background image
 void draw_player(Color filter);
 void draw_enemies(Color filter);
-void draw_player_hearts(int hearts, Camera2D *player_camera);
+void draw_player_hearts_ammo(int hearts, Camera2D *player_camera, Color filter);
 void draw_projectiles(PROJECTILE projectile_array[], Color filter); //draw the projectiles of an array
 void draw_level_ending_subtitles(Camera2D player_camera, Color filter); //draw the subtitles that must show up when the player reach the end of the level
 
@@ -373,7 +375,7 @@ int gaming(Camera2D *player_camera) {
     
     draw_enemies(WHITE);
     
-    draw_player_hearts(player.hearts, player_camera);
+    draw_player_hearts_ammo(player.hearts, player_camera, WHITE);
     
     player_win(*player_camera, WHITE);
     
@@ -473,7 +475,7 @@ int pause_display(Camera2D player_camera) {
         
         draw_projectiles(laser_projectiles, DARKGRAY);
         
-        draw_player_hearts(player.hearts, &player_camera);
+        draw_player_hearts_ammo(player.hearts, &player_camera, DARKGRAY);
         
         draw_level_ending_subtitles(player_camera, DARKGRAY);
         
@@ -818,6 +820,9 @@ void load_textures(void) {
     
     bazooka_bullet_texture = LoadTexture("/Users/melch/Desktop/Projetos/projetos_faculdade/infman/resources/player/bazooka_bullet.png");
     
+    laser_ammo_texture = LoadTexture("/Users/melch/Desktop/Projetos/projetos_faculdade/infman/resources/player/laser_ammo.png");
+    
+    bazooka_ammo_texture = LoadTexture("/Users/melch/Desktop/Projetos/projetos_faculdade/infman/resources/player/bazooka_ammo.png");
 }
 
 void unload_textures(void) {
@@ -846,6 +851,8 @@ void unload_textures(void) {
     UnloadTexture(laser_bullet_texture);
     UnloadTexture(enemies_laser_bullet_texture);
     UnloadTexture(bazooka_bullet_texture);
+    UnloadTexture(laser_ammo_texture);
+    UnloadTexture(bazooka_ammo_texture);
 }
 
 void draw_background(Color filter) {
@@ -1140,15 +1147,34 @@ void player_damage(char source) {
     player.vulnerable = 0;
 }
 
-void draw_player_hearts(int hearts, Camera2D *player_camera) {
+void draw_player_hearts_ammo(int hearts, Camera2D *player_camera, Color filter) {
     Vector2 heart_position = {-2*TILESIZE, 6*TILESIZE};
+    Vector2 laser_ammo_position = {heart_position.x + PLAYERSIZE/2 + TILESIZE * DEFAULTZOOM, heart_position.y + TILESIZE * DEFAULTZOOM};
+    Vector2 bazooka_ammo_position = {heart_position.x + TILESIZE * DEFAULTZOOM, laser_ammo_position.y + TILESIZE * DEFAULTZOOM};
+    
+    char laser_ammo_string[8];
+    char bazooka_ammo_string[8];
+    
+    //converts the ammo integers to strings
+    sprintf(laser_ammo_string, "%d", player.ammo_laser);
+    sprintf(bazooka_ammo_string, "%d", player.ammo_bazooka);
     
     EndMode2D();
     
+    //draw the hearts
     for (int i = 0; i < hearts; i++) {
         heart_position.x += TILESIZE * DEFAULTZOOM;
-        DrawTextureEx(player_heart_texture, heart_position, 0, DEFAULTZOOM, WHITE);
+        DrawTextureEx(player_heart_texture, heart_position, 0, DEFAULTZOOM, filter);
     }
+    
+    //draw the laser ammo
+    DrawTextureEx(laser_ammo_texture, laser_ammo_position, 0, DEFAULTZOOM, filter);
+    DrawText(laser_ammo_string, laser_ammo_position.x + TILESIZE*DEFAULTZOOM, laser_ammo_position.y, DEFAULTZOOM*FONTSIZE/2, DARKGRAY);
+    
+    
+    //draw the bazooka ammo
+    DrawTextureEx(bazooka_ammo_texture, bazooka_ammo_position, 0, DEFAULTZOOM, filter);
+    DrawText(bazooka_ammo_string, bazooka_ammo_position.x + PLAYERSIZE*DEFAULTZOOM, bazooka_ammo_position.y, DEFAULTZOOM*FONTSIZE/2, DARKGRAY);
     
     BeginMode2D(*player_camera);
 }
