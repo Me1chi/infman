@@ -234,60 +234,60 @@ void pause(Camera2D player_camera); //verifies if the game can be paused and cal
 int pause_display(Camera2D player_camera); //displays the pause menu with the options: RESUME and MAIN MENU
 
 //gaming related functions
-void gaming_test(Camera2D *player_camera);
-int gaming(Camera2D *player_camera);
+void gaming_test(Camera2D *player_camera); //tests if the game must start
+int gaming(Camera2D *player_camera); //all of the gaming functions run inside it
 
 //drawing & camera functions
-void camera_update(Camera2D *camera);
-void draw_map(Color filter);
-void draw_background(Color filter);
+void camera_update(Camera2D *camera); //updates the camera for each frame
+void draw_map(Color filter); //draws scenario tiles, obstacles and everything statical
+void draw_background(Color filter); //draws a background image
 void draw_player(Color filter);
 void draw_enemies(Color filter);
 void draw_player_hearts(int hearts, Camera2D *player_camera);
-void draw_projectiles(PROJECTILE projectile_array[], Color filter);
-void draw_level_ending_subtitles(Camera2D player_camera, Color filter);
+void draw_projectiles(PROJECTILE projectile_array[], Color filter); //draw the projectiles of an array
+void draw_level_ending_subtitles(Camera2D player_camera, Color filter); //draw the subtitles that must show up when the player reach the end of the level
 
 //player mechanics/update functions
-void init_player_map(void);
-void is_player_blocked(void);
-void is_player_on_map(void);
+void init_player_map(void); //initializes all the important information of the player, enemies and scenario
+void is_player_blocked(void); //checks player collision
+void is_player_on_map(void); //doesn't let the player to flee from the fight
 void player_movement(void);
 void player_jump(int scale);
 void player_laser(void);
 void player_bazooka(void);
-void vulnerability_update(void);
+void vulnerability_update(void); //makes the player vulnerable again after certain time
 void spike_damage(void);
-bool projectile_player_hit_test(PROJECTILE proj);
+bool projectile_player_hit_test(PROJECTILE proj); //tests if the player was hit by some projectile
 void player_damage(char source);
-void player_death_test(Camera2D player_camera);
-void player_death(Camera2D player_camera);
+void player_death_test(Camera2D player_camera); //tests if the game must end the death screen
+void player_death(Camera2D player_camera); //death screen with an option to return to main menu
 bool is_player_on_ending_platform(void);
-void player_win(Camera2D player_camera, Color filter);
+void player_win(Camera2D player_camera, Color filter); //when the player reaches the end of the level, call a lot of functions to save their score
 
 //enemies mechanics/update functions
 void enemy_movement(void);
-void enemies_meet_player(void);
+void enemies_meet_player(void); //tests if the enemy can/could see the player
 bool enemy_looking_at_player(ENEMY en);
-bool enemy_should_shoot(ENEMY en, int position_on_array);
+bool enemy_should_shoot(ENEMY en, int position_on_array); //use probability to return if the enemy should shoot
 void enemies_laser(void);
 bool projectile_enemy_hit_test(PROJECTILE projectile, ENEMY enemy);
-void enemies_drop_manager(void);
+void enemies_drop_manager(void); //IN THE FUTURE
 
 //top scores updating functions
-void infman_dance(Vector2 position, Color filter);
-PLAYER_ON_TOP get_user_name_score(Camera2D player_camera);
-bool input_array_writer(char *array, int *position);
-int compare_scores_array(PLAYER_ON_TOP pl);
-void applies_array_modifications(PLAYER_ON_TOP pl);
+void infman_dance(Vector2 position, Color filter); //hehe this is cool
+PLAYER_ON_TOP get_user_name_score(Camera2D player_camera); //takes the user input for name  and recording
+bool input_array_writer(char *array, int *position); //called by the above one
+int compare_scores_array(PLAYER_ON_TOP pl); //make sure that the player is well placed in the top scores array
+void applies_array_modifications(PLAYER_ON_TOP pl); //make the modifications on the top players array permanent
 
 //miscellaneous
-void laser_shoot(void);
+void laser_shoot(void); //these two are used to update the projectiles and its interactions
 void bazooka_update(void);
 int roll_a_dice(int max_number);
-void time_actions_update_bool(bool *update_var, float *timer, float goal_time);
-void get_map_tiles_matrix(Rectangle map_tiles[MAPHEIGHT][MAPLENGTH], int do_spikes_matter);
-bool check_map_tiles_collision(Rectangle map_tiles[MAPHEIGHT][MAPLENGTH], Rectangle object);
-void get_tile_on_matrix(int *hor_tile, int *ver_tile, Rectangle object);
+void time_actions_update_bool(bool *update_var, float *timer, float goal_time); //update some variables that change within an specific time
+void get_map_tiles_matrix(Rectangle map_tiles[MAPHEIGHT][MAPLENGTH], int do_spikes_matter); //get the map tiles in a rectangles matrix
+bool check_map_tiles_collision(Rectangle map_tiles[MAPHEIGHT][MAPLENGTH], Rectangle object); //check all the blocks in the map tiles matrix. Searching for collision
+void get_tile_on_matrix(int *hor_tile, int *ver_tile, Rectangle object); //gets the coordinate of the player in the original map matrix
 
 ///functions declartion (ENDING)
 
