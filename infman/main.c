@@ -27,8 +27,8 @@
 #define INFMANBLUE2 (Color){1, 248, 252, 255}
 
 //map macros
-#define MAPLENGTH 100
-#define MAPHEIGHT 10
+#define MAPLENGTH 200
+#define MAPHEIGHT 11
 #define TILESIZE 16
 #define CIRCUITPARTS 20
 
@@ -40,8 +40,8 @@
 #define PLAYERHEARTS 5
 #define PLAYERHEARTSMAX 15
 #define PLAYERSHOOTTIME 0.5
-#define PLAYERAMMO1 17
-#define PLAYERAMMO2 5
+#define PLAYERAMMO1 37
+#define PLAYERAMMO2 11
 #define WALKSPEED 2.5
 #define JUMPSPEED 2.75
 #define GRAVITY 0.1
@@ -50,7 +50,7 @@
 #define DAMAGESPEEDRETARDING 1.5
 
 //enemy macros
-#define ENEMIES 5
+#define ENEMIES 12
 #define ENEMYHEARTS 2
 #define ENEMYSIZE1 20
 #define ENEMYMINSPEEDX 0.1
@@ -61,7 +61,7 @@
 #define ENEMYMAXMOVERANGEX 4
 #define ENEMYMINMOVERANGEY 1
 #define ENEMYMAXMOVERANGEY 2
-#define CHANCEOFSHOOTING 1 //the number here is represented by its inverse! example 6 -> 1/6
+#define CHANCEOFSHOOTING 2 //the number here is represented by its inverse! example 6 -> 1/6
 #define ENEMYRELOADTIMEMIN 1
 #define ENEMYRELOADTIMEMAX 2
 #define ENEMYFOV 700.0
@@ -190,6 +190,7 @@ Texture2D main_menu_texture;
 Texture2D background_texture;
 Texture2D floor_texture;
 Texture2D obstacle_texture;
+Texture2D level_ending_toten_texture;
 
 //player related textures
 Texture2D player_idle_texture;
@@ -221,7 +222,7 @@ void bin_to_top_players(void); //reads a binary file containing the top players 
 void top_players_to_bin(void);
 
 //text related functions
-Vector2 txt_to_map(void); //reads a binary file containing the map information and returns the player's initial position
+Vector2 txt_to_map(void); //reads a text file containing the map information and returns the player's initial position
 
 //main menu related functions
 void main_menu_test(void); //tests if the player should be in the main menu and calls main_menu_test() if it does (MUST BE THE FIRST FUNCTION TO RUN IN THE MAIN LOOP!!!
@@ -468,6 +469,8 @@ int pause_display(Camera2D player_camera) {
         
         draw_enemies(DARKGRAY);
         
+        draw_projectiles(bazooka_projectiles, DARKGRAY);
+        
         draw_projectiles(laser_projectiles, DARKGRAY);
         
         draw_player_hearts(player.hearts, &player_camera);
@@ -693,6 +696,8 @@ void draw_map(Color filter) {
     
     Vector2 drawing_position;
     
+    Vector2 level_ending_toten_position = {0};
+    
     for (int i = 0; i < MAPHEIGHT; i++) {
         for (int j = 0; j < MAPLENGTH; j++) {
             drawing_position = (Vector2){j*TILESIZE, i*TILESIZE};
@@ -703,9 +708,20 @@ void draw_map(Color filter) {
                 case 'S': //draw the obstacle
                     DrawTextureV(obstacle_texture, drawing_position, filter);
                     break;
+                case 'L':
+                    level_ending_toten_position = drawing_position;
+                    break;
             }
         }
     }
+    
+    level_ending_toten_position.x -= TILESIZE;
+    
+    level_ending_toten_position.y -= TILESIZE;
+    
+    
+    DrawTextureV(level_ending_toten_texture, level_ending_toten_position, filter);
+    
 }
 
 void init_player_map(void) {
@@ -782,6 +798,8 @@ void load_textures(void) {
     
     obstacle_texture = LoadTexture("/Users/melch/Desktop/projetos/projetos_faculdade/infman/resources/map/spike.png");
     
+    level_ending_toten_texture = LoadTexture("/Users/melch/Desktop/projetos/projetos_faculdade/infman/resources/map/level_ending_toten.png");
+    
     enemy_texture = LoadTexture("/Users/melch/Desktop/projetos/projetos_faculdade/infman/resources/mobs/enemies.png");
     
     player_idle_texture = LoadTexture("/Users/melch/Desktop/projetos/projetos_faculdade/infman/resources/player/infman_idle.png");
@@ -819,6 +837,7 @@ void unload_textures(void) {
     UnloadTexture(background_texture);
     UnloadTexture(floor_texture);
     UnloadTexture(obstacle_texture);
+    UnloadTexture(level_ending_toten_texture);
     UnloadTexture(enemy_texture);
     UnloadTexture(player_idle_texture);
     UnloadTexture(player_running_texture);
@@ -1079,6 +1098,8 @@ void player_death(Camera2D player_camera) {
         
         draw_map(DARKGRAY);
         
+        draw_projectiles(bazooka_projectiles, DARKGRAY);
+        
         draw_projectiles(laser_projectiles, DARKGRAY);
         
         draw_player(DARKGRAY);
@@ -1206,8 +1227,8 @@ void draw_projectiles(PROJECTILE projectile_array[], Color filter) {
 void spike_damage(void) {
     if (player.vulnerable) {
         int horizontal_tile = floorf((player.position.x)/TILESIZE);
-        int horizontal_tile2 = floorf((player.position.x + 2*PLAYERSIZE/3)/TILESIZE);
-        int vertical_tile = floorf((player.position.y + PLAYERSIZE - 4)/TILESIZE);
+        int horizontal_tile2 = floorf((player.position.x + PLAYERSIZE)/TILESIZE);
+        int vertical_tile = floorf((player.position.y + PLAYERSIZE - 8)/TILESIZE);
         
         if (map[vertical_tile][horizontal_tile] == 'S' || map[vertical_tile][horizontal_tile2] == 'S' || map[vertical_tile - 1][horizontal_tile] == 'S' || map[vertical_tile - 1][horizontal_tile2] == 'S') {
             player_jump(1.2);
