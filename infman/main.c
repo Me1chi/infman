@@ -10,6 +10,7 @@
 #include <math.h>
 #include <stdlib.h>
 #include <string.h>
+#include <ctype.h>
 
 //screen, menus & button macros
 #define SCREENWIDTH 1200.0
@@ -69,6 +70,7 @@
 #define MAXPROJECTILES 96
 #define PROJECTILESIZE 8
 #define LASERPROJECTILESPEED 3.0
+#define BAZOOKAPROJECTILESPEED 1.5
 
 typedef struct {
     //vector quantities
@@ -154,6 +156,9 @@ ENEMY enemies[ENEMIES] = {0};
 int laser_projectiles_counter;
 PROJECTILE laser_projectiles[MAXPROJECTILES] = {0};
 
+int bazooka_projectiles_counter;
+PROJECTILE bazooka_projectiles[MAXPROJECTILES] = {0};
+
 PLAYER_ON_TOP top_players[TOPLAYERS]; //array containing the top players, filled by the reading of top_scores.bin
 
 DROP ammo[ENEMIES] = {0};
@@ -200,6 +205,7 @@ Texture2D enemy_texture;
 //projectiles related textures
 Texture2D laser_bullet_texture;
 Texture2D enemies_laser_bullet_texture;
+Texture2D bazooka_bullet_texture;
 
 ///declares the global textures for the game itself (ENDING)
 
@@ -247,6 +253,7 @@ void is_player_on_map(void);
 void player_movement(void);
 void player_jump(int scale);
 void player_laser(void);
+void player_bazooka(void);
 void vulnerability_update(void);
 void spike_damage(void);
 bool projectile_player_hit_test(PROJECTILE proj);
@@ -274,6 +281,7 @@ void applies_array_modifications(PLAYER_ON_TOP pl);
 
 //miscellaneous
 void laser_shoot(void);
+void bazooka_update(void);
 int roll_a_dice(int max_number);
 void time_actions_update_bool(bool *update_var, float *timer, float goal_time);
 void get_map_tiles_matrix(Rectangle map_tiles[MAPHEIGHT][MAPLENGTH], int do_spikes_matter);
@@ -356,6 +364,8 @@ int gaming(Camera2D *player_camera) {
     
     draw_map(WHITE);
     
+    draw_projectiles(bazooka_projectiles, WHITE);
+    
     draw_projectiles(laser_projectiles, WHITE);
     
     draw_player(WHITE);
@@ -368,6 +378,8 @@ int gaming(Camera2D *player_camera) {
     
     laser_shoot();
     
+    bazooka_update();
+    
     EndMode2D();
     
     EndDrawing();
@@ -375,6 +387,8 @@ int gaming(Camera2D *player_camera) {
     player_movement();
     
     player_laser();
+    
+    player_bazooka();
     
     enemy_movement();
     
@@ -783,6 +797,9 @@ void load_textures(void) {
     laser_bullet_texture = LoadTexture("/Users/melch/Desktop/Projetos/projetos_faculdade/infman/resources/player/player_laser_bullet.png");
     
     enemies_laser_bullet_texture = LoadTexture("/Users/melch/Desktop/Projetos/projetos_faculdade/infman/resources/mobs/enemies_laser_bullet.png");
+    
+    bazooka_bullet_texture = LoadTexture("/Users/melch/Desktop/Projetos/projetos_faculdade/infman/resources/player/bazooka_bullet.png");
+    
 }
 
 void unload_textures(void) {
@@ -809,6 +826,7 @@ void unload_textures(void) {
     UnloadTexture(player_heart_texture);
     UnloadTexture(laser_bullet_texture);
     UnloadTexture(enemies_laser_bullet_texture);
+    UnloadTexture(bazooka_bullet_texture);
 }
 
 void draw_background(Color filter) {
@@ -1167,6 +1185,14 @@ void draw_projectiles(PROJECTILE projectile_array[], Color filter) {
                 else if (projectile_array[i].direction.x == -1)
                     DrawTextureRec(laser_bullet_texture, (Rectangle){8,0,PROJECTILESIZE, PROJECTILESIZE/2}, (Vector2) {projectile.bullet.x, projectile.bullet.y}, filter);
                 break;
+                
+            case 1:
+                if (projectile.direction.x == 1)
+                    DrawTextureRec(bazooka_bullet_texture, (Rectangle){0,0,2*PROJECTILESIZE, PROJECTILESIZE}, (Vector2) {projectile.bullet.x, projectile.bullet.y}, filter);
+                else if (projectile_array[i].direction.x == -1)
+                    DrawTextureRec(bazooka_bullet_texture, (Rectangle){2*PROJECTILESIZE, 0, 2*PROJECTILESIZE, PROJECTILESIZE}, (Vector2) {projectile.bullet.x, projectile.bullet.y}, filter);
+                break;
+                
             case 2:
                 if (projectile.direction.x == 1)
                     DrawTextureRec(enemies_laser_bullet_texture, (Rectangle){0,0,PROJECTILESIZE, PROJECTILESIZE/2}, (Vector2) {projectile.bullet.x, projectile.bullet.y}, filter);
@@ -1452,10 +1478,6 @@ void time_actions_update_bool(bool *update_var, float *timer, float goal_time) {
         *timer = 0.0f;
 }
 
-void player_bazooka(void) {
-    
-}
-
 void get_tile_on_matrix(int *hor_tile, int *ver_tile, Rectangle object) {
     *hor_tile = floorf(object.x / TILESIZE);
     *ver_tile = floorf(object.y / TILESIZE);
@@ -1589,7 +1611,7 @@ bool input_array_writer(char *array, int *position) {
 
     if (letter_input >= 32 && letter_input <= 125 && *position < MAXNAME && letter_input != KEY_EQUAL) {
             
-        array[*position] = letter_input;
+        array[*position] = tolower(letter_input);
                         
         array[*position+1] = '\0';
             
@@ -1662,4 +1684,97 @@ void top_players_to_bin(void) {
         do_not_exit = 0;
     
     fclose(fileptr);
+}
+
+void player_bazooka(void) {
+    
+    if (player.ammo_bazooka > 0 && IsKeyPressed(KEY_B)) {
+        int current_direction;
+        Rectangle current_bullet;
+        
+        if (bazooka_projectiles_counter >= MAXPROJECTILES)
+            bazooka_projectiles_counter = 0;
+        
+        if (player.speed.x == 0)
+            current_direction = 1;
+        else
+            current_direction = player.speed.x/fabsf(player.speed.x);
+        
+        if (current_direction == 1) {
+            current_bullet.x = player.position.x + PLAYERSIZE;
+        } else
+            current_bullet.x = player.position.x;
+        
+        current_bullet.y = player.position.y + 9;
+        current_bullet.width = PROJECTILESIZE*2;
+        current_bullet.height = PROJECTILESIZE;
+        
+        bazooka_projectiles[bazooka_projectiles_counter] = (PROJECTILE){current_bullet, (Vector2){current_direction, player.speed.y/10.0}, 1};
+        
+        bazooka_projectiles_counter++;
+        player.ammo_bazooka--;
+        player.shooting = 1;
+    }
+    
+}
+
+void bazooka_update(void) {
+    
+    Rectangle map_tiles[MAPHEIGHT][MAPLENGTH];
+    
+    get_map_tiles_matrix(map_tiles, true);
+    
+    for (int i = 0; i < MAXPROJECTILES; i++) {
+        //bullet movement
+        bazooka_projectiles[i].bullet.x += BAZOOKAPROJECTILESPEED*bazooka_projectiles[i].direction.x;
+        
+        bazooka_projectiles[i].bullet.y += BAZOOKAPROJECTILESPEED*bazooka_projectiles[i].direction.y;
+        
+        //enemy collision check
+        for (int j = 0; j < ENEMIES; j++) {
+            if (projectile_enemy_hit_test(bazooka_projectiles[i], enemies[j]) &&
+                bazooka_projectiles[i].projectile_type == 1) {
+                
+                bazooka_projectiles[i].bullet.y = -SCREENHEIGHT;
+                enemies[j].hearts = 0;
+            }
+        }
+        
+        //map tiles collision
+        if (check_map_tiles_collision(map_tiles, bazooka_projectiles[i].bullet) &&
+            bazooka_projectiles[i].projectile_type == 1) {
+            
+            int horizontal_exp_tile = 0;
+            int vertical_exp_tile = 0;
+            
+            
+            bazooka_projectiles[i].bullet.x += PROJECTILESIZE*2;
+            
+            get_tile_on_matrix(&horizontal_exp_tile, &vertical_exp_tile, bazooka_projectiles[i].bullet);
+            
+            //explosion tile
+            map[vertical_exp_tile][horizontal_exp_tile] = ' ';
+            
+            //above tile
+            if (vertical_exp_tile > 0)
+                map[vertical_exp_tile - 1][horizontal_exp_tile] = ' ';
+            
+            //below tile
+            if (vertical_exp_tile < MAPHEIGHT - 1)
+                map[vertical_exp_tile + 1][horizontal_exp_tile] = ' ';
+            
+            //adjacent tiles
+            if (horizontal_exp_tile < MAPLENGTH -1)
+                map[vertical_exp_tile][horizontal_exp_tile + 1] = ' ';
+            
+            if (horizontal_exp_tile > 0)
+                map[vertical_exp_tile][horizontal_exp_tile - 1] = ' ';
+            
+            
+            
+            bazooka_projectiles[i].bullet.y = -SCREENHEIGHT;
+            
+        }
+            
+    }
 }
