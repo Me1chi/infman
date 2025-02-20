@@ -1,0 +1,5 @@
+#XCode items
+    *.xcodeproj
+
+#My tests
+    testando.*
