@@ -1,5 +1,6 @@
-#XCode items
-    *.xcodeproj
+# Build folders
+build/
+bin/
 
-#My tests
-    testando
+# Files that should be auto generated
+config/auto/

@@ -1,9 +1,3 @@
-//
-//  main.c
-//  infman
-//
-//  Created by Melchior Boaretto Neto on 14/12/24.
-
 #include "raylib.h"
 #include <stdio.h>
 #include <time.h>
@@ -664,7 +658,7 @@ Vector2 txt_to_map(void) {
     Vector2 player_position = {0, 0};
     enemies_counter = 0;
 
-    if ((fileptr = fopen("resources/map/terrain.txt", "r")) != NULL) {
+    if ((fileptr = fopen("config/terrain.txt", "r")) != NULL) {
         for (int i = 0; i < MAPHEIGHT; i++) {
             for (int j = 0; j < MAPLENGTH; j++) {
                 fscanf(fileptr, "%c", &read);
