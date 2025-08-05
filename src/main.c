@@ -5,25 +5,20 @@
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
+#include "file_handler.h"
+#include "textures_and_camera.h"
 
 //screen, menus & button macros
 #define SCREENWIDTH 1200.0
 #define SCREENHEIGHT 600.0
-#define BUTTONWIDTH 150.0
-#define BUTTONHEIGHT 75.0
 #define FONTSIZE 20.0
 #define TOPLAYERS 10
 #define MAXNAME 9
 #define DEFAULTZOOM 3.2
 
-//color macros
-#define INFMANBLUE1 (Color){0, 136, 252, 255}
-#define INFMANBLUE2 (Color){1, 248, 252, 255}
-
 //map macros
 #define MAPLENGTH 200
 #define MAPHEIGHT 11
-#define TILESIZE 16
 #define CIRCUITPARTS 20
 
 //player macros
@@ -291,11 +286,23 @@ void get_tile_on_matrix(int *hor_tile, int *ver_tile, Rectangle object); //gets 
 
 //main function
 int main(void) {
+
+
     //functions to initialize the arrays with the files
     bin_to_top_players(); //top players initialization
 
     //initializes the game window
     InitWindow(SCREENWIDTH, SCREENHEIGHT, "INFman");
+
+    // TESTING
+
+    //TexturesCamera testing;
+    //load_textures_testing(&testing.textures);
+
+
+
+    // TESTING
+
 
     //dynamic camera initialization
     Camera2D camera = {0};
@@ -643,7 +650,7 @@ void leaderboard_display(void) {
 void bin_to_top_players(void) {
     FILE *fileptr;
 
-    if ((fileptr = fopen("src/bin/top_scores.bin", "r+")) != NULL) {
+    if ((fileptr = fopen("../src/bin/top_scores.bin", "r+")) != NULL) {
         fread(top_players, sizeof(PLAYER_ON_TOP), TOPLAYERS, fileptr);
     } else
         do_not_exit = 0;
@@ -658,7 +665,7 @@ Vector2 txt_to_map(void) {
     Vector2 player_position = {0, 0};
     enemies_counter = 0;
 
-    if ((fileptr = fopen("config/terrain.txt", "r")) != NULL) {
+    if ((fileptr = fopen("../config/terrain.txt", "r")) != NULL) {
         for (int i = 0; i < MAPHEIGHT; i++) {
             for (int j = 0; j < MAPLENGTH; j++) {
                 fscanf(fileptr, "%c", &read);
@@ -769,55 +776,55 @@ void load_textures(void) {
 
     //main menu textures
 
-    infman_logo_texture = LoadTexture("resources/map/inf_man_logo.png");
+    infman_logo_texture = LoadTexture("../resources/map/inf_man_logo.png");
 
-    play_texture = LoadTexture("resources/map/button0.png");
+    play_texture = LoadTexture("../resources/map/button0.png");
 
-    leaderboard_texture = LoadTexture("resources/map/button0.png");
+    leaderboard_texture = LoadTexture("../resources/map/button0.png");
 
-    exit_texture = LoadTexture("resources/map/button0.png");
+    exit_texture = LoadTexture("../resources/map/button0.png");
 
     Image infmanblueImage = GenImageColor(BUTTONWIDTH*2, BUTTONHEIGHT*4, INFMANBLUE1);
     leaderboard_table_texture = LoadTextureFromImage(infmanblueImage);
     UnloadImage(infmanblueImage);
 
-    leaderboard_main_menu_texture = LoadTexture("resources/map/button0.png");
+    leaderboard_main_menu_texture = LoadTexture("../resources/map/button0.png");
 
     //pause menu textures
-    resume_texture = LoadTexture("resources/map/button1_esp.png");
+    resume_texture = LoadTexture("../resources/map/button1_esp.png");
 
-    main_menu_texture = LoadTexture("resources/map/button1_esp.png");
+    main_menu_texture = LoadTexture("../resources/map/button1_esp.png");
 
     //gaming textures
-    background_texture = LoadTexture("resources/map/background.png");
+    background_texture = LoadTexture("../resources/map/background.png");
 
-    floor_texture = LoadTexture("resources/map/tile.png");
+    floor_texture = LoadTexture("../resources/map/tile.png");
 
-    obstacle_texture = LoadTexture("resources/map/spike.png");
+    obstacle_texture = LoadTexture("../resources/map/spike.png");
 
-    level_ending_toten_texture = LoadTexture("resources/map/level_ending_toten.png");
+    level_ending_toten_texture = LoadTexture("../resources/map/level_ending_toten.png");
 
-    enemy_texture = LoadTexture("resources/mobs/enemies.png");
+    enemy_texture = LoadTexture("../resources/mobs/enemies.png");
 
-    player_idle_texture = LoadTexture("resources/player/infman_idle.png");
+    player_idle_texture = LoadTexture("../resources/player/infman_idle.png");
 
-    player_running_texture = LoadTexture("resources/player/infman_running.png");
+    player_running_texture = LoadTexture("../resources/player/infman_running.png");
 
-    player_running_shoot_texture = LoadTexture("resources/player/infman_running_shooting.png");
+    player_running_shoot_texture = LoadTexture("../resources/player/infman_running_shooting.png");
 
-    player_jumping_texture = LoadTexture("resources/player/infman_jumping.png");
+    player_jumping_texture = LoadTexture("../resources/player/infman_jumping.png");
 
-    player_heart_texture = LoadTexture("resources/player/inf_man-heart.png");
+    player_heart_texture = LoadTexture("../resources/player/inf_man-heart.png");
 
-    laser_bullet_texture = LoadTexture("resources/player/player_laser_bullet.png");
+    laser_bullet_texture = LoadTexture("../resources/player/player_laser_bullet.png");
 
-    enemies_laser_bullet_texture = LoadTexture("resources/mobs/enemies_laser_bullet.png");
+    enemies_laser_bullet_texture = LoadTexture("../resources/mobs/enemies_laser_bullet.png");
 
-    bazooka_bullet_texture = LoadTexture("resources/player/bazooka_bullet.png");
+    bazooka_bullet_texture = LoadTexture("../resources/player/bazooka_bullet.png");
 
-    laser_ammo_texture = LoadTexture("resources/player/laser_ammo.png");
+    laser_ammo_texture = LoadTexture("../resources/player/laser_ammo.png");
 
-    bazooka_ammo_texture = LoadTexture("resources/player/bazooka_ammo.png");
+    bazooka_ammo_texture = LoadTexture("../resources/player/bazooka_ammo.png");
 }
 
 void unload_textures(void) {
@@ -1720,7 +1727,7 @@ int compare_scores_array(PLAYER_ON_TOP pl) {
 void top_players_to_bin(void) {
     FILE *fileptr;
 
-    if ((fileptr = fopen("src/bin/top_scores.bin", "wb"))) {
+    if ((fileptr = fopen("../src/bin/top_scores.bin", "wb"))) {
         fwrite(top_players, sizeof(PLAYER_ON_TOP), TOPLAYERS, fileptr);
     } else
         do_not_exit = 0;

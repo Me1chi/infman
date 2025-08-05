@@ -30,6 +30,8 @@ include_directories(${CMAKE_SOURCE_DIR}/include)
 
 add_executable(infman
     src/main.c
+    src/file_handler.c
+    src/textures_and_camera.c
 )
 
 target_link_libraries(infman PRIVATE raylib)
