@@ -14,7 +14,6 @@
 #define FONTSIZE 20.0
 #define TOPLAYERS 10
 #define MAXNAME 9
-#define DEFAULTZOOM 3.2
 
 //map macros
 #define MAPLENGTH 200
@@ -161,48 +160,6 @@ char map[MAPHEIGHT][MAPLENGTH]; //matrix containing the map description, filled 
 
 ///global variables declaration (ENDING)
 
-
-//declares the global textures for the main menu
-Texture2D infman_logo_texture;
-Texture2D play_texture;
-Texture2D leaderboard_texture;
-Texture2D exit_texture;
-Texture2D leaderboard_table_texture;
-Texture2D leaderboard_main_menu_texture;
-
-//declares the global textures for the pause menu
-Texture2D resume_texture;
-Texture2D main_menu_texture;
-
-///declares the global textures for the game itself (BEGGINING)
-
-//scenario related textures
-Texture2D background_texture;
-Texture2D floor_texture;
-Texture2D obstacle_texture;
-Texture2D level_ending_toten_texture;
-
-//player related textures
-Texture2D player_idle_texture;
-Texture2D player_running_texture;
-Texture2D player_running_shoot_texture;
-Texture2D player_jumping_texture;
-Texture2D player_teleport_texture;
-Texture2D player_heart_texture;
-
-//enemies related textures
-Texture2D enemy_texture;
-
-//projectiles related textures
-Texture2D laser_bullet_texture;
-Texture2D enemies_laser_bullet_texture;
-Texture2D bazooka_bullet_texture;
-Texture2D laser_ammo_texture;
-Texture2D bazooka_ammo_texture;
-
-///declares the global textures for the game itself (ENDING)
-
-
 ///functions declaration (BEGGINING)
 
 //textures related functions
@@ -296,19 +253,11 @@ int main(void) {
 
     // TESTING
 
-    //TexturesCamera testing;
-    //load_textures_testing(&testing.textures);
-
-
+    TexturesCamera textures_and_camera;
+    load_textures_testing(&textures_and_camera.textures);
+    init_camera(&textures_and_camera.camera, SCREENWIDTH, MAPHEIGHT);
 
     // TESTING
-
-
-    //dynamic camera initialization
-    Camera2D camera = {0};
-    camera.target.y = MAPHEIGHT;
-    camera.offset = (Vector2){SCREENWIDTH / 6.0f, 0};
-    camera.zoom = DEFAULTZOOM;
 
     //initializes the audio devide (if using -> FIX THE XCODE SOUND ISSUE)
     InitAudioDevice();
@@ -336,7 +285,7 @@ int main(void) {
     }
 
     //textures unloading
-    unload_textures();
+    unload_textures_testing(&textures_and_camera.textures);
 
     //closes the audio device
     CloseAudioDevice();
@@ -776,27 +725,27 @@ void load_textures(void) {
 
     //main menu textures
 
-    infman_logo_texture = LoadTexture("../resources/map/inf_man_logo.png");
+//6    infman_logo_texture = LoadTexture("../resources/map/inf_man_logo.png");
 
-    play_texture = LoadTexture("../resources/map/button0.png");
+//5    play_texture = LoadTexture("../resources/map/button0.png");
 
-    leaderboard_texture = LoadTexture("../resources/map/button0.png");
+//4    leaderboard_texture = LoadTexture("../resources/map/button0.png");
 
-    exit_texture = LoadTexture("../resources/map/button0.png");
+//3    exit_texture = LoadTexture("../resources/map/button0.png");
 
-    Image infmanblueImage = GenImageColor(BUTTONWIDTH*2, BUTTONHEIGHT*4, INFMANBLUE1);
-    leaderboard_table_texture = LoadTextureFromImage(infmanblueImage);
-    UnloadImage(infmanblueImage);
+//2    Image infmanblueImage = GenImageColor(BUTTONWIDTH*2, BUTTONHEIGHT*4, INFMANBLUE1);
+//2    leaderboard_table_texture = LoadTextureFromImage(infmanblueImage);
+//2    UnloadImage(infmanblueImage);
 
-    leaderboard_main_menu_texture = LoadTexture("../resources/map/button0.png");
+//1    leaderboard_main_menu_texture = LoadTexture("../resources/map/button0.png");
 
     //pause menu textures
-    resume_texture = LoadTexture("../resources/map/button1_esp.png");
+//7    resume_texture = LoadTexture("../resources/map/button1_esp.png");
 
-    main_menu_texture = LoadTexture("../resources/map/button1_esp.png");
+//8    main_menu_texture = LoadTexture("../resources/map/button1_esp.png");
 
     //gaming textures
-    background_texture = LoadTexture("../resources/map/background.png");
+//9    background_texture = LoadTexture("../resources/map/background.png");
 
     floor_texture = LoadTexture("../resources/map/tile.png");
 

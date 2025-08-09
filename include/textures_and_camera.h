@@ -9,6 +9,7 @@
 #define INFMANBLUE2 (Color){1, 248, 252, 255}
 
 #define TILESIZE 16
+#define DEFAULTZOOM 3.2
 
 typedef struct {
 
@@ -83,3 +84,6 @@ typedef struct {
 } TexturesCamera;
 
 void load_textures_testing(GameTextures *textures);
+void unload_textures_testing(GameTextures *textures);
+
+void init_camera(Camera2D* camera, float screen_width, float map_height);
