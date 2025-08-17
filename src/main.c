@@ -175,26 +175,26 @@ Vector2 txt_to_map(void); //reads a text file containing the map information and
 
 //main menu related functions
 void main_menu_test(void); //tests if the player should be in the main menu and calls main_menu_test() if it does (MUST BE THE FIRST FUNCTION TO RUN IN THE MAIN LOOP!!!
-int main_menu_display(void); //displays the main menu with the options: PLAY, LEADERBOARD and EXIT
-void leaderboard_display(void); //displays the leaderboard (the top5 players)
+int main_menu_display(TexturesCamera *textures_and_camera); //displays the main menu with the options: PLAY, LEADERBOARD and EXIT
+void leaderboard_display(TexturesCamera *textures_and_camera); //displays the leaderboard (the top5 players)
 
 //pause menu related functions
-void pause(Camera2D player_camera); //verifies if the game can be paused and calls pause_display() when P is pressed
-int pause_display(Camera2D player_camera); //displays the pause menu with the options: RESUME and MAIN MENU
+void pause(TexturesCamera *textures_and_camera); //verifies if the game can be paused and calls pause_display() when P is pressed
+int pause_display(TexturesCamera *textures_and_camera); //displays the pause menu with the options: RESUME and MAIN MENU
 
 //gaming related functions
-void gaming_test(Camera2D *player_camera); //tests if the game must start
-int gaming(Camera2D *player_camera); //all of the gaming functions run inside it
+void gaming_test(TexturesCamera *textures_and_camera); //tests if the game must start
+int gaming(TexturesCamera *textures_and_camera); //all of the gaming functions run inside it
 
 //drawing & camera functions
-void camera_update(Camera2D *camera); //updates the camera for each frame
-void draw_map(Color filter); //draws scenario tiles, obstacles and everything statical
-void draw_background(Color filter); //draws a background image
-void draw_player(Color filter);
-void draw_enemies(Color filter);
-void draw_player_hearts_ammo(int hearts, Camera2D *player_camera, Color filter);
-void draw_projectiles(PROJECTILE projectile_array[], Color filter); //draw the projectiles of an array
-void draw_level_ending_subtitles(Camera2D player_camera, Color filter); //draw the subtitles that must show up when the player reach the end of the level
+void camera_update(TexturesCamera *textures_and_camera); //updates the camera for each frame
+void draw_map(TexturesCamera *textures_and_camera, Color filter); //draws scenario tiles, obstacles and everything statical
+void draw_background(TexturesCamera *textures_and_camera, Color filter); //draws a background image
+void draw_player(TexturesCamera *textures_and_camera, Color filter);
+void draw_enemies(TexturesCamera *textures_and_camera, Color filter);
+void draw_player_hearts_ammo(TexturesCamera *textures_and_camera, int hearts, Camera2D *player_camera, Color filter);
+void draw_projectiles(TexturesCamera *textures_and_camera, PROJECTILE projectile_array[], Color filter); //draw the projectiles of an array
+void draw_level_ending_subtitles(TexturesCamera *textures_and_camera, Camera2D player_camera, Color filter); //draw the subtitles that must show up when the player reach the end of the level
 
 //player mechanics/update functions
 void init_player_map(void); //initializes all the important information of the player, enemies and scenario
@@ -599,7 +599,7 @@ void leaderboard_display(void) {
 void bin_to_top_players(void) {
     FILE *fileptr;
 
-    if ((fileptr = fopen("../src/bin/top_scores.bin", "r+")) != NULL) {
+    if ((fileptr = fopen("../config/top_scores.bin", "r+")) != NULL) {
         fread(top_players, sizeof(PLAYER_ON_TOP), TOPLAYERS, fileptr);
     } else
         do_not_exit = 0;
@@ -1676,7 +1676,7 @@ int compare_scores_array(PLAYER_ON_TOP pl) {
 void top_players_to_bin(void) {
     FILE *fileptr;
 
-    if ((fileptr = fopen("../src/bin/top_scores.bin", "wb"))) {
+    if ((fileptr = fopen("../config/top_scores.bin", "wb"))) {
         fwrite(top_players, sizeof(PLAYER_ON_TOP), TOPLAYERS, fileptr);
     } else
         do_not_exit = 0;
