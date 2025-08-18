@@ -1,4 +1,10 @@
+#pragma once
 #include "raylib.h"
+
+//screen, menus & button macros
+#define SCREENWIDTH 1200.0
+#define SCREENHEIGHT 600.0
+#define FONTSIZE 20.0
 
 // Button macros
 #define BUTTONWIDTH 150.0
@@ -83,7 +89,7 @@ typedef struct {
 
 } TexturesCamera;
 
-void load_textures_testing(GameTextures *textures);
-void unload_textures_testing(GameTextures *textures);
+void load_textures(GameTextures *textures);
+void unload_textures(GameTextures *textures);
 
 void init_camera(Camera2D* camera, float screen_width, float map_height);

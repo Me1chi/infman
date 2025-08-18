@@ -2,7 +2,7 @@
 #include "file_handler.h"
 #include "raylib.h"
 
-void load_textures_testing(GameTextures *textures) {
+void load_textures(GameTextures *textures) {
 
     // Menu
     textures->menu.infman_logo = LoadTexture(FROM_RESOURCES("map/inf_man_logo.png"));
@@ -44,7 +44,7 @@ void load_textures_testing(GameTextures *textures) {
 
 }
 
-void unload_textures_testing(GameTextures* textures) {
+void unload_textures(GameTextures* textures) {
 
     // Menu
     UnloadTexture(textures->menu.infman_logo);
