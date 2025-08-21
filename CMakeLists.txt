@@ -32,6 +32,10 @@ add_executable(infman
     src/main.c
     src/file_handler.c
     src/textures_and_camera.c
+    src/top_scores.c
+    src/player.c
+    src/projectiles.c
+    src/utils.c
 )
 
 target_link_libraries(infman PRIVATE raylib)

@@ -14,24 +14,6 @@
 #define MAPHEIGHT 11
 #define CIRCUITPARTS 20
 
-//player macros
-#define PLAYERSIZE 24
-#define PLAYERSIZESHOOTJUMP 32
-#define PLAYERBLINKTIME 3 //every x seconds player blinks if idle
-#define SPRITEFRAMETIME 0.2 //in seconds
-#define PLAYERHEARTS 5
-#define PLAYERHEARTSMAX 15
-#define PLAYERSHOOTTIME 0.5
-#define PLAYERAMMO1 37
-#define PLAYERAMMO2 11
-#define PLAYERLUCK 2 //it is the number of faces of the dice the player is rolling to do something
-#define WALKSPEED 2.5
-#define JUMPSPEED 2.75
-#define GRAVITY 0.1
-#define MAXFALLINGSPEED 3.0
-#define INVINCIBILITYTIME 0.5
-#define DAMAGESPEEDRETARDING 1.5
-
 //enemy macros
 #define ENEMIES 12
 #define ENEMYHEARTS 2
@@ -57,28 +39,6 @@
 
 typedef struct {
     //vector quantities
-    Vector2 position;
-    Vector2 speed;
-    Vector2 size;
-
-    //scalar quantities
-    int ammo_laser;
-    int ammo_bazooka;
-    int hearts;
-    int score;
-
-    //state testing
-    bool shooting;
-    bool on_floor;
-    bool on_ceiling;
-    bool blocked_right;
-    bool blocked_left;
-    bool vulnerable;
-
-} PLAYER;
-
-typedef struct {
-    //vector quantities
     Rectangle position_size;
     Vector2 speed;
     Vector2 pivot;
@@ -96,13 +56,6 @@ typedef struct {
     bool met_player;
 
 } ENEMY;
-
-typedef struct {
-    Rectangle bullet;
-    Vector2 direction;
-    int projectile_type; //0 for laser, 1 for bazooka, 2 for enemy shot and so on...
-
-} PROJECTILE;
 
 typedef struct {
     Vector2 position;
@@ -174,19 +127,6 @@ void draw_level_ending_subtitles(TexturesCamera *textures_and_camera, Camera2D p
 
 //player mechanics/update functions
 void init_player_map(void); //initializes all the important information of the player, enemies and scenario
-void is_player_blocked(void); //checks player collision
-void is_player_on_map(void); //doesn't let the player to flee from the fight
-void player_movement(void);
-void player_jump(float scale);
-void player_laser(void);
-void player_bazooka(void);
-void vulnerability_update(void); //makes the player vulnerable again after certain time
-void spike_damage(void);
-bool projectile_player_hit_test(PROJECTILE proj); //tests if the player was hit by some projectile
-void player_damage(char source);
-void player_death_test(Camera2D player_camera); //tests if the game must end the death screen
-void player_death(Camera2D player_camera); //death screen with an option to return to main menu
-bool is_player_on_ending_platform(void);
 void player_win(Camera2D player_camera, Color filter); //when the player reaches the end of the level, call a lot of functions to save their score
 
 //enemies mechanics/update functions
@@ -762,125 +702,6 @@ void draw_player(Color filter) {
     }
 }
 
-void player_movement(void) {
-    player.position.x += player.speed.x;
-    player.position.y += player.speed.y;
-
-    //horizontal movement
-    if (IsKeyDown(KEY_D) && !IsKeyDown(KEY_A) && !player.blocked_right)
-        player.speed.x = WALKSPEED;
-    else if (IsKeyDown(KEY_A) && !IsKeyDown(KEY_D) && !player.blocked_left)
-        player.speed.x = -WALKSPEED;
-    else
-        player.speed.x = 0.0f;
-
-    if (invincibility_timer > 0 && invincibility_timer < INVINCIBILITYTIME/2)
-        player.speed.x = player.speed.x/DAMAGESPEEDRETARDING;
-
-    //vertical movement
-    if (player.on_floor) {
-        player.speed.y = 0.0f;
-
-        if (IsKeyDown(KEY_W))
-            player_jump(1);
-
-    } else if (player.speed.y < MAXFALLINGSPEED)
-        player.speed.y += GRAVITY;
-}
-
-void player_jump(float scale) {
-    player.speed.y = -JUMPSPEED*scale;
-}
-
-void is_player_on_map(void) {
-
-    int horizontal_tile, vertical_tile;
-
-    get_tile_on_matrix(&horizontal_tile, &vertical_tile, (Rectangle){
-        player.position.x,
-        player.position.y,
-        player.size.x,
-        player.size.y
-    });
-
-    if (vertical_tile == MAPHEIGHT + 6)
-        player.hearts = 0;
-
-    if (horizontal_tile <= 0)
-        player.blocked_left = 1;
-
-    if (horizontal_tile >= MAPLENGTH - 1)
-        player.blocked_right = 1;
-
-}
-
-void is_player_blocked(void) {
-
-    int on_floor_test = 0;
-    int blocked_left_test = 0;
-    int blocked_left_temp = 0;
-    int blocked_right_test = 0;
-    int blocked_right_temp = 0;
-
-    Rectangle player_box = {
-        player.position.x - 1,
-        player.position.y,
-        player.size.x + 2,
-        player.size.y + 2
-    };
-
-    Rectangle map_tiles[MAPHEIGHT][MAPLENGTH];
-
-    get_map_tiles_matrix(map_tiles, false);
-
-    for (int i = 0; i < MAPHEIGHT; i++) {
-        for (int j = 0; j < MAPLENGTH; j++) {
-            blocked_left_temp = 0;
-            blocked_right_temp = 0;
-
-            if (CheckCollisionRecs(map_tiles[i][j], player_box)) {
-
-                if (player_box.y + player_box.height <= map_tiles[i][j].y + 6) {
-                    on_floor_test++;
-                    if (player_box.y + player_box.height < map_tiles[i][j].y + 2)
-                        on_floor_test += 1000;
-                }
-
-                if (player_box.x <= map_tiles[i][j].x - TILESIZE + 5 && on_floor_test == 0) {
-                    blocked_right_test++;
-                    blocked_right_temp = 1;
-                }
-
-                if (player_box.x >= map_tiles[i][j].x + TILESIZE - 5 && on_floor_test == 0) {
-                    blocked_left_test++;
-                    blocked_left_temp = 1;
-                }
-
-                if ((blocked_left_temp && blocked_right_temp) && on_floor_test == 0)
-                    on_floor_test--;
-
-            }
-
-        }
-    }
-
-    if (on_floor_test > 0)
-        player.on_floor = 1;
-    else
-        player.on_floor = 0;
-
-    if (blocked_right_test > 0)
-        player.blocked_right = 1;
-    else
-        player.blocked_right = 0;
-
-    if (blocked_left_test > 0)
-        player.blocked_left = 1;
-    else
-        player.blocked_left = 0;
-
-}
-
 void camera_update(Camera2D *camera) {
     if (!current_screen || current_screen == 1) {
         camera->target.x = player.position.x;
@@ -1084,10 +905,6 @@ void spike_damage(void) {
             player_damage('S');
         }
     }
-}
-
-void vulnerability_update(void) {
-    time_actions_update_bool(&player.vulnerable, &invincibility_timer, INVINCIBILITYTIME);
 }
 
 void enemy_movement(void) {
@@ -1336,21 +1153,6 @@ bool enemy_looking_at_player(ENEMY en) {
     test = (en.speed.x < 0 && player.position.x < en.position_size.x) || (en.speed.x > 0 && player.position.x > en.position_size.x);
 
     return test;
-}
-
-void time_actions_update_bool(bool *update_var, float *timer, float goal_time) {
-    if (*timer >= goal_time) {
-        *update_var = 1;
-        *timer = 0;
-    } else if (!(*update_var)) {
-        *timer += GetFrameTime();
-    } else
-        *timer = 0.0f;
-}
-
-void get_tile_on_matrix(int *hor_tile, int *ver_tile, Rectangle object) {
-    *hor_tile = floorf(object.x / TILESIZE);
-    *ver_tile = floorf(object.y / TILESIZE);
 }
 
 void player_win(Camera2D player_camera, Color filter) {
