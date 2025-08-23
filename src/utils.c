@@ -1,6 +1,59 @@
 #include "utils.h"
 #include "raylib.h"
 #include "math.h"
+#include <stdlib.h>
+#include <string.h>
+#include <stdint.h>
+#include "textures_and_camera.h"
+
+static const size_t VECTORMINSIZE = 3;
+
+DynVector vector_new(size_t element_size) {
+    DynVector new_vector;
+
+    new_vector.ptr = malloc(element_size*VECTORMINSIZE);
+    new_vector.len = 0;
+    new_vector.size = 3;
+    new_vector.element_size = element_size;
+
+    return new_vector;
+}
+
+void vector_drop(DynVector *vector) {
+    if (vector->ptr != NULL) {
+        free(vector->ptr);
+    }
+
+    vector->len = 0;
+    vector->size = 0;
+    vector->element_size = 0;
+}
+
+void vector_push_back(DynVector *vector, void *item) {
+    // Size testing and size increasing
+    if (vector->len >= vector->size) {
+        vector->size *= 2;
+        vector->ptr = realloc(vector->ptr, vector->size * vector->element_size);
+    }
+
+    memcpy(
+        (int8_t *)vector->ptr + vector->len * vector->element_size,
+        item,
+        vector->element_size
+    );
+    vector->len++;
+}
+
+// If NULL, out of bounds
+void *vector_get(DynVector vector, size_t index) {
+    if (index < vector.len) {
+        return ((int8_t *)vector.ptr + index * vector.element_size);
+    } else {
+        return NULL;
+    }
+}
+
+// I WILL NOT IMPLEMENT THE REMOVE FUNCTION BC IT IS NOT NECESSARY FOR THIS APLICATION
 
 void time_actions_update_bool(bool *update_var, float *timer, float goal_time) {
     if (*timer >= goal_time) {
@@ -16,4 +69,5 @@ void get_tile_on_matrix(int *hor_tile, int *ver_tile, Rectangle object) {
     *hor_tile = floorf(object.x / TILESIZE);
     *ver_tile = floorf(object.y / TILESIZE);
 }
+
 
