@@ -1,106 +1,13 @@
 #include "raylib.h"
 #include <stdio.h>
 #include <time.h>
-#include <math.h>
 #include <stdlib.h>
 #include <string.h>
-#include <ctype.h>
 #include "file_handler.h"
 #include "textures_and_camera.h"
 #include "top_scores.h"
 
-//map macros
-#define MAPLENGTH 200
-#define MAPHEIGHT 11
-#define CIRCUITPARTS 20
-
-//enemy macros
-#define ENEMIES 12
-#define ENEMYHEARTS 2
-#define ENEMYSIZE1 20
-#define ENEMYMINSPEEDX 0.1
-#define ENEMYMAXSPEEDX 0.5
-#define ENEMYMINSPEEDY 0.01
-#define ENEMYMAXSPEEDY 0.05
-#define ENEMYMINMOVERANGEX 2
-#define ENEMYMAXMOVERANGEX 4
-#define ENEMYMINMOVERANGEY 1
-#define ENEMYMAXMOVERANGEY 2
-#define CHANCEOFSHOOTING 2 //the number here is represented by its inverse! example 6 -> 1/6
-#define ENEMYRELOADTIMEMIN 1
-#define ENEMYRELOADTIMEMAX 2
-#define ENEMYFOV 700.0
-
-//projectile macros
-#define MAXPROJECTILES 96
-#define PROJECTILESIZE 8
-#define LASERPROJECTILESPEED 3.0
-#define BAZOOKAPROJECTILESPEED 1.5
-
-typedef struct {
-    //vector quantities
-    Rectangle position_size;
-    Vector2 speed;
-    Vector2 pivot;
-    Vector2 movement_range;
-
-    //scalar quantities
-    int hearts;
-    int reload_time;
-
-    //state testing
-    bool blocked_left;
-    bool blocked_right;
-    bool shooting;
-    bool alive;
-    bool met_player;
-
-} ENEMY;
-
-typedef struct {
-    Vector2 position;
-    int drop_type; //0 for heart, 1 for circuit part and so on...
-    int state; //0 for unavailable, 1 for available, 2 for took
-
-} DROP;
-
-///global variables declaration (BEGGINING)
-
-//game state flag variables
-int current_screen = 2; //0 for gaming, 1 to pause and 2 to main_menu --> may be initialized as 2! *NOTE: 3 got used to the winning screen!! So it is reserved too
-
-int do_not_exit = 1; //defined as 1, must only be modified by the main menu EXIT button or the ERROR HANDLING functions!!
-
-//important timers
-float invincibility_timer = 0;
-float player_sprite_timer = 0;
-float player_shoot_timer = 0;
-float enemies_shooting_timer[ENEMIES] = {0};
-
-//counters and arrays (related when together)
-int enemies_counter;
-ENEMY enemies[ENEMIES] = {0};
-
-int laser_projectiles_counter;
-PROJECTILE laser_projectiles[MAXPROJECTILES] = {0};
-
-int bazooka_projectiles_counter;
-PROJECTILE bazooka_projectiles[MAXPROJECTILES] = {0};
-
-DROP ammo[ENEMIES] = {0};
-
-int player_sprite_counter = 0;
-
-//the player and the map
-PLAYER player;
-char map[MAPHEIGHT][MAPLENGTH]; //matrix containing the map description, filled by the reading of terrain.txt
-
-///global variables declaration (ENDING)
-
-///functions declaration (BEGGINING)
-
-//text related functions
-Vector2 txt_to_map(void); //reads a text file containing the map information and returns the player's initial position
+//DROP ammo[ENEMIES] = {0};
 
 //main menu related functions
 void main_menu_test(void); //tests if the player should be in the main menu and calls main_menu_test() if it does (MUST BE THE FIRST FUNCTION TO RUN IN THE MAIN LOOP!!!
@@ -129,26 +36,9 @@ void draw_level_ending_subtitles(TexturesCamera *textures_and_camera, Camera2D p
 void init_player_map(void); //initializes all the important information of the player, enemies and scenario
 void player_win(Camera2D player_camera, Color filter); //when the player reaches the end of the level, call a lot of functions to save their score
 
-//enemies mechanics/update functions
-void enemy_movement(void);
-void enemies_meet_player(void); //tests if the enemy can/could see the player
-bool enemy_looking_at_player(ENEMY en);
-bool enemy_should_shoot(ENEMY en, int position_on_array); //use probability to return if the enemy should shoot
-void enemies_laser(void);
-bool projectile_enemy_hit_test(PROJECTILE projectile, ENEMY enemy);
-void enemies_drop_manager(void); //IN THE FUTURE
-
 //miscellaneous
 void laser_shoot(void); //these two are used to update the projectiles and its interactions
 void bazooka_update(void);
-int roll_a_dice(int max_number);
-void time_actions_update_bool(bool *update_var, float *timer, float goal_time); //update some variables that change within an specific time
-void get_map_tiles_matrix(Rectangle map_tiles[MAPHEIGHT][MAPLENGTH], int do_spikes_matter); //get the map tiles in a rectangles matrix
-bool check_map_tiles_collision(Rectangle map_tiles[MAPHEIGHT][MAPLENGTH], Rectangle object); //check all the blocks in the map tiles matrix. Searching for collision
-void get_tile_on_matrix(int *hor_tile, int *ver_tile, Rectangle object); //gets the coordinate of the player in the original map matrix
-
-///functions declartion (ENDING)
-
 
 //main function
 int main(void) {
@@ -156,24 +46,16 @@ int main(void) {
     //initializes the game window
     InitWindow(SCREENWIDTH, SCREENHEIGHT, "INFman");
 
+    // Top players leaderboard
     TopPlayer *top_players = top_players_from_bin();
 
-    // TESTING
-
+    // Camera and textures from the files
     TexturesCamera textures_and_camera;
     load_textures(&textures_and_camera.textures);
     init_camera(&textures_and_camera.camera, SCREENWIDTH, MAPHEIGHT);
 
-    // TESTING
-
     //initializes the audio devide (if using -> FIX THE XCODE SOUND ISSUE)
     InitAudioDevice();
-
-    //textures initialization
-    load_textures();
-
-    //sounds initialization
-
 
     printf("Hello, World!\n");
 
@@ -860,10 +742,6 @@ void laser_shoot(void) {
     }
 }
 
-bool projectile_enemy_hit_test(PROJECTILE projectile, ENEMY enemy) {
-    return CheckCollisionRecs(projectile.bullet, enemy.position_size);;
-}
-
 void draw_projectiles(PROJECTILE projectile_array[], Color filter) {
 
     for (int i = 0; i < MAXPROJECTILES; i++) {
@@ -907,68 +785,6 @@ void spike_damage(void) {
     }
 }
 
-void enemy_movement(void) {
-    enemies_meet_player();
-
-    Rectangle map_tiles[MAPHEIGHT][MAPLENGTH];
-    get_map_tiles_matrix(map_tiles, 0);
-
-    int horizontal_tile = 0;
-    int vertical_tile = 0;
-
-    for (int i = 0; i < ENEMIES; i++) {
-        get_tile_on_matrix(&horizontal_tile, &vertical_tile, enemies[i].position_size);
-
-        if (horizontal_tile <= 0 || horizontal_tile >= MAPLENGTH - 1)
-            enemies[i].speed.x = -enemies[i].speed.x;
-
-        if (fabsf(enemies[i].position_size.x - enemies[i].pivot.x) > enemies[i].movement_range.x)
-            enemies[i].speed.x = -enemies[i].speed.x;
-
-
-        if (vertical_tile <= 0 || vertical_tile >= MAPHEIGHT) {
-            enemies[i].speed.y = -enemies[i].speed.y;
-            if (vertical_tile <= 4)
-                enemies[i].position_size.y = enemies[i].pivot.y;
-        }
-
-        if (fabsf(enemies[i].position_size.y - enemies[i].pivot.y) > enemies[i].movement_range.y ||
-            check_map_tiles_collision(map_tiles, enemies[i].position_size))
-            enemies[i].speed.y = -enemies[i].speed.y;
-
-
-        if (enemies[i].hearts <= 0) {
-            enemies[i].pivot = (Vector2){enemies[i].pivot.x, enemies[i].pivot.y};
-            enemies[i].position_size.y = -SCREENHEIGHT;
-        }
-
-        if (enemy_looking_at_player(enemies[i]) &&
-            enemies[i].met_player)
-            enemies[i].shooting = 1;
-        else
-            enemies[i].shooting = 0;
-
-        enemies[i].position_size.x += enemies[i].speed.x;
-        enemies[i].position_size.y += enemies[i].speed.y;
-    }
-}
-
-void enemies_drop_manager(void) {
-    for (int i = 0; i < ENEMIES; i++) {
-        if (enemies[i].hearts <= 0 && enemies[i].alive) {
-            if (!enemies[i].met_player)
-                player.score += 15;
-            else if (!enemy_looking_at_player(enemies[i]))
-                player.score += 50;
-            else
-                player.score += 100;
-            ammo[i].state = 1;
-            ammo[i].position = enemies[i].pivot;
-            enemies[i].alive = 0;
-        }
-    }
-}
-
 void draw_enemies(Color filter) {
     for (int i = 0; i < ENEMIES; i++) {
         ENEMY en = enemies[i];
@@ -986,34 +802,6 @@ void draw_enemies(Color filter) {
                 drawing_square.x += ENEMYSIZE1;
 
             DrawTextureRec(enemy_texture, drawing_square, (Vector2){en.position_size.x, en.position_size.y}, filter);
-        }
-    }
-}
-
-void enemies_laser(void) {
-    for (int i = 0; i < ENEMIES; i++) {
-        if (enemy_should_shoot(enemies[i], i)) {
-
-            int current_direction_x;
-            Rectangle current_bullet;
-
-            if (laser_projectiles_counter >= MAXPROJECTILES)
-                laser_projectiles_counter = 0;
-
-            current_direction_x = enemies[i].speed.x/fabsf(enemies[i].speed.x);
-
-            if (current_direction_x == 1)
-                current_bullet.x = enemies[i].position_size.x + ENEMYSIZE1;
-            else
-                current_bullet.x = enemies[i].position_size.x;
-
-            current_bullet.y = enemies[i].position_size.y + 12;
-            current_bullet.width = PROJECTILESIZE;
-            current_bullet.height = PROJECTILESIZE/2.0;
-
-            laser_projectiles[laser_projectiles_counter] = (PROJECTILE){current_bullet, (Vector2){current_direction_x, 0.0}, 2};
-
-            laser_projectiles_counter++;
         }
     }
 }
@@ -1058,34 +846,6 @@ void player_laser(void) {
 
 }
 
-bool enemy_should_shoot(ENEMY en, int position_on_array) {
-    int decision;
-
-    int enemy_can_shoot = 0;
-
-    if (enemies_shooting_timer[position_on_array] >= en.reload_time && en.shooting) {
-        enemy_can_shoot = 1;
-        enemies_shooting_timer[position_on_array] = 0;
-    } else if (!enemy_can_shoot) {
-        enemies_shooting_timer[position_on_array] += GetFrameTime();
-    } else
-        enemies_shooting_timer[position_on_array] = 0;
-
-    if (roll_a_dice(CHANCEOFSHOOTING) == 1 && enemy_can_shoot)
-        decision = 1;
-    else
-        decision = 0;
-
-    return decision;
-}
-
-int roll_a_dice(int max_number) {
-    if (max_number == 0)
-        return 0;
-    else
-        return 1 + (rand() % max_number);
-}
-
 bool projectile_player_hit_test(PROJECTILE proj) {
     Rectangle player_collision_box = {
         player.position.x,
@@ -1102,57 +862,6 @@ bool projectile_player_hit_test(PROJECTILE proj) {
         collision_test = 0;
 
     return collision_test;
-}
-
-void get_map_tiles_matrix(Rectangle map_tiles[MAPHEIGHT][MAPLENGTH], int do_spikes_matter) {
-
-    for (int i = 0; i < MAPHEIGHT; i++) {
-        for (int j = 0; j < MAPLENGTH; j++) {
-            if (map[i][j] == 'O' || map[i][j] == 'S'*do_spikes_matter)
-                map_tiles[i][j] = (Rectangle){
-                    j * TILESIZE,
-                    i * TILESIZE,
-                    TILESIZE,
-                    TILESIZE
-                };
-            else
-                map_tiles[i][j] = (Rectangle){
-                    0,
-                    0,
-                    0,
-                    0
-                };
-        }
-    }
-}
-
-bool check_map_tiles_collision(Rectangle map_tiles[MAPHEIGHT][MAPLENGTH], Rectangle object) {
-    int testing = 0;
-
-    for (int i = 0; i < MAPHEIGHT; i++) {
-        for (int j = 0; j < MAPLENGTH; j++) {
-
-            testing += CheckCollisionRecs(map_tiles[i][j], object);
-
-        }
-    }
-
-    return testing;
-}
-
-void enemies_meet_player(void) {
-    for (int i = 0; i < ENEMIES; i++) {
-        if (fabsf(player.position.x - enemies[i].position_size.x) < ENEMYFOV/DEFAULTZOOM)
-            enemies[i].met_player = 1;
-    }
-}
-
-bool enemy_looking_at_player(ENEMY en) {
-    bool test = 0;
-
-    test = (en.speed.x < 0 && player.position.x < en.position_size.x) || (en.speed.x > 0 && player.position.x > en.position_size.x);
-
-    return test;
 }
 
 void player_win(Camera2D player_camera, Color filter) {

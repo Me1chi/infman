@@ -21,6 +21,14 @@
 #define DAMAGESPEEDRETARDING 1.5
 
 typedef struct {
+
+    float invincibility;
+    float player_sprite;
+    float player_shoot;
+
+} PlayerTimers;
+
+typedef struct {
     //vector quantities
     Vector2 position;
     Vector2 speed;
@@ -39,6 +47,8 @@ typedef struct {
     bool blocked_right;
     bool blocked_left;
     bool vulnerable;
+
+    PlayerTimers timer;
 
 } Player;
 

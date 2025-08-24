@@ -1,5 +1,7 @@
 #include "map.h"
+#include "raylib.h"
 #include "utils.h"
+#include "textures_and_camera.h"
 #include <stddef.h>
 #include <stdio.h>
 #include <string.h>
@@ -45,3 +47,53 @@ void drop_map(SmartMap *smart_map) {
 
     vector_drop(smart_map);
 }
+
+Vector2 get_map_extremes(SmartMap smart_map) {
+    Vector2 lens;
+
+    int greatest = 0;
+    int test = 0;
+    // Here I grab the largest row
+    for (int i = 0; i < vector_len(smart_map); i++) {
+        if ((test = vector_len(*(SmartMap *)vector_get(smart_map, i))) > greatest) {
+            greatest = test;
+        }
+    }
+
+    lens.x = greatest;
+    lens.y = vector_len(smart_map);
+
+    return lens;
+}
+
+void get_map_tiles_matrix(Rectangle **map_tiles, SmartMap map, int do_spikes_matter) {
+
+    size_t map_rows = vector_len(map);
+
+    for (int i = 0; i < map_rows; i++) {
+
+        DynVector row = *(DynVector *)vector_get(map, i);
+        size_t len = vector_len(row);
+
+        for (int j = 0; j < len; j++) {
+
+            char element = *(char *)vector_get(row, j);
+
+            if (element == 'O' || element == 'S'*do_spikes_matter)
+                map_tiles[i][j] = (Rectangle){
+                    j * TILESIZE,
+                    i * TILESIZE,
+                    TILESIZE,
+                    TILESIZE
+                };
+            else
+                map_tiles[i][j] = (Rectangle){
+                    0,
+                    0,
+                    0,
+                    0
+                };
+        }
+    }
+}
+
