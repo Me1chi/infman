@@ -1,3 +1,4 @@
+#include "game.h"
 #include "raylib.h"
 #include <stdio.h>
 #include <time.h>
@@ -6,21 +7,13 @@
 #include "file_handler.h"
 #include "textures_and_camera.h"
 #include "top_scores.h"
+#include "map.h"
 
 //DROP ammo[ENEMIES] = {0};
 
-//main menu related functions
-void main_menu_test(void); //tests if the player should be in the main menu and calls main_menu_test() if it does (MUST BE THE FIRST FUNCTION TO RUN IN THE MAIN LOOP!!!
+int pause_display(TexturesCamera *textures_and_camera); //displays the pause menu with the options: RESUME and MAIN MENU
 int main_menu_display(TexturesCamera *textures_and_camera); //displays the main menu with the options: PLAY, LEADERBOARD and EXIT
 void leaderboard_display(TexturesCamera *textures_and_camera); //displays the leaderboard (the top5 players)
-
-//pause menu related functions
-void pause(TexturesCamera *textures_and_camera); //verifies if the game can be paused and calls pause_display() when P is pressed
-int pause_display(TexturesCamera *textures_and_camera); //displays the pause menu with the options: RESUME and MAIN MENU
-
-//gaming related functions
-void gaming_test(TexturesCamera *textures_and_camera); //tests if the game must start
-int gaming(TexturesCamera *textures_and_camera); //all of the gaming functions run inside it
 
 //drawing & camera functions
 void camera_update(TexturesCamera *textures_and_camera); //updates the camera for each frame
@@ -32,16 +25,12 @@ void draw_player_hearts_ammo(TexturesCamera *textures_and_camera, int hearts, Ca
 void draw_projectiles(TexturesCamera *textures_and_camera, PROJECTILE projectile_array[], Color filter); //draw the projectiles of an array
 void draw_level_ending_subtitles(TexturesCamera *textures_and_camera, Camera2D player_camera, Color filter); //draw the subtitles that must show up when the player reach the end of the level
 
-//player mechanics/update functions
-void init_player_map(void); //initializes all the important information of the player, enemies and scenario
-void player_win(Camera2D player_camera, Color filter); //when the player reaches the end of the level, call a lot of functions to save their score
-
 //miscellaneous
 void laser_shoot(void); //these two are used to update the projectiles and its interactions
 void bazooka_update(void);
 
 //main function
-int main(void) {
+int main() {
 
     //initializes the game window
     InitWindow(SCREENWIDTH, SCREENHEIGHT, "INFman");
@@ -49,10 +38,16 @@ int main(void) {
     // Top players leaderboard
     TopPlayer *top_players = top_players_from_bin();
 
+    // Map from the config file
+    SmartMap map = fetch_map();
+    Vector2 map_extremes_float = get_map_extremes(map);
+    int map_extreme_x = (int)map_extremes_float.x;
+    int map_extreme_y = (int)map_extremes_float.y;
+
     // Camera and textures from the files
     TexturesCamera textures_and_camera;
     load_textures(&textures_and_camera.textures);
-    init_camera(&textures_and_camera.camera, SCREENWIDTH, MAPHEIGHT);
+    init_camera(&textures_and_camera.camera, SCREENWIDTH, map_extreme_y);
 
     //initializes the audio devide (if using -> FIX THE XCODE SOUND ISSUE)
     InitAudioDevice();
@@ -67,10 +62,15 @@ int main(void) {
     unsigned int current_time_reduced = (unsigned int)current_time;
     srand(current_time_reduced);
 
-    while (!WindowShouldClose() && do_not_exit) {
+    GameContext game_context = {
+        .curr_screen = menu,
+        .running = true,
+    };
+
+    while (!WindowShouldClose() && game_context.running) {
         main_menu_test();
-        pause(camera);
-        gaming_test(&camera);
+        pause(&textures_and_camera);
+        gaming_test(&textures_and_camera);
     }
 
     //textures unloading
@@ -79,84 +79,16 @@ int main(void) {
     //closes the audio device
     CloseAudioDevice();
 
+    // Drop dyn allocated map
+    map_drop(&map);
+
+    // Saves the leaderboard binary file
+    top_players_to_bin(top_players);
+
     //closes the window
     CloseWindow();
 
     return 0;
-}
-
-void gaming_test(Camera2D *player_camera) {
-    //tests if the game must run
-    if (current_screen == 0)
-        gaming(player_camera);
-}
-
-int gaming(Camera2D *player_camera) {
-
-    is_player_blocked();
-
-    is_player_on_map();
-
-    BeginDrawing();
-
-    ClearBackground(RAYWHITE);
-
-    BeginMode2D(*player_camera);
-
-    draw_background(WHITE);
-
-    draw_map(WHITE);
-
-    draw_projectiles(bazooka_projectiles, WHITE);
-
-    draw_projectiles(laser_projectiles, WHITE);
-
-    draw_player(WHITE);
-
-    draw_enemies(WHITE);
-
-    draw_player_hearts_ammo(player.hearts, player_camera, WHITE);
-
-    player_win(*player_camera, WHITE);
-
-    laser_shoot();
-
-    bazooka_update();
-
-    EndMode2D();
-
-    EndDrawing();
-
-    player_movement();
-
-    player_laser();
-
-    player_bazooka();
-
-    enemy_movement();
-
-    enemies_laser();
-
-    enemies_drop_manager();
-
-    camera_update(player_camera);
-
-    player_death_test(*player_camera);
-
-    spike_damage();
-
-    vulnerability_update();
-
-    return 0;
-}
-
-void pause(Camera2D player_camera) {
-    //tests if the pause menu must open
-    if (IsKeyPressed(KEY_P) && !current_screen)
-        current_screen = 1;
-
-    if (current_screen == 1)
-        current_screen = pause_display(player_camera);
 }
 
 int pause_display(Camera2D player_camera) {
@@ -456,50 +388,6 @@ void draw_map(Color filter) {
 
 }
 
-void init_player_map(void) {
-    //player attributes
-    player.hearts = PLAYERHEARTS;
-    player.size = (Vector2){PLAYERSIZE, PLAYERSIZE};
-    player.speed = (Vector2){0, 0};
-    player.position = txt_to_map(); //initializes the player position and the map
-    player.ammo_laser = PLAYERAMMO1;
-    player.ammo_bazooka = PLAYERAMMO2;
-    player.score = 0;
-    player.shooting = 0;
-    player.blocked_left = 0;
-    player.blocked_right = 0;
-    player.on_floor = 0;
-    player.on_ceiling = 0;
-    player.vulnerable = 0;
-    invincibility_timer = 0;
-
-    //projectiles attributes
-    for (int i = 0; i < MAXPROJECTILES; i++)
-        laser_projectiles[i].bullet.y = -SCREENHEIGHT;
-    laser_projectiles_counter = 0;
-
-    //enemies and its drops attributes
-    for (int i = 0; i < ENEMIES; i++) {
-        //enemies
-        enemies[i].speed.x = (float)(ENEMYMINSPEEDX*10 + (rand() % (int)(ENEMYMAXSPEEDX*10 - ENEMYMINSPEEDX*10 + 1))/10.0);
-        enemies[i].speed.y = (float)(ENEMYMINSPEEDY*10 + (rand() % (int)(ENEMYMAXSPEEDY*10 - ENEMYMINSPEEDY*10 + 1))/10.0);;
-        enemies[i].movement_range.x = TILESIZE*(ENEMYMINMOVERANGEX + (rand() % (ENEMYMAXMOVERANGEX - ENEMYMINMOVERANGEX + 1)));
-        enemies[i].movement_range.y = TILESIZE*(ENEMYMINMOVERANGEY + (rand() % (ENEMYMAXMOVERANGEY - ENEMYMINMOVERANGEY + 1)));
-        enemies[i].hearts = ENEMYHEARTS;
-        enemies[i].blocked_left = 0;
-        enemies[i].blocked_right = 0;
-        enemies[i].shooting = 0;
-        enemies[i].alive = 1;
-        enemies[i].reload_time = ENEMYRELOADTIMEMIN + (rand() % (ENEMYRELOADTIMEMAX - ENEMYRELOADTIMEMIN + 1));
-        enemies[i].met_player = 0;
-
-        //drops
-        ammo[i].state = 0;
-        ammo[i].position = (Vector2){0.0, 0.0};
-        ammo[i].drop_type = 0;
-    }
-}
-
 void draw_background(Color filter) {
     int backgrounds_to_draw = ceilf(MAPLENGTH*TILESIZE);
 
@@ -593,84 +481,6 @@ void camera_update(Camera2D *camera) {
 void player_death_test(Camera2D player_camera) {
     if (player.hearts <= 0 && !current_screen)
         player_death(player_camera);
-}
-
-void player_death(Camera2D player_camera) {
-    int accept_flag = 0;
-    int hovering;
-    char player_score_string[MAXNAME];
-
-    sprintf(player_score_string, "%d", player.score);
-
-    Vector2 mouse_pointer = {0.0f, 0.0f};
-
-    EndDrawing();
-
-    Rectangle main_menu = {player.position.x + SCREENWIDTH/12, MAPHEIGHT*TILESIZE/2.0 + BUTTONHEIGHT/2, BUTTONWIDTH/DEFAULTZOOM, BUTTONHEIGHT/DEFAULTZOOM};
-
-    while(accept_flag == 0) {
-        mouse_pointer = GetMousePosition();
-        mouse_pointer = GetScreenToWorld2D(GetMousePosition(), player_camera);
-        hovering = 0;
-
-        if (CheckCollisionPointRec(mouse_pointer, main_menu)) {
-            hovering = 1;
-            if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
-                current_screen = 2;
-                accept_flag = 1;
-            }
-        }
-
-        BeginDrawing();
-
-        ClearBackground(RAYWHITE);
-
-        BeginMode2D(player_camera);
-
-        draw_background(DARKGRAY);
-
-        draw_map(DARKGRAY);
-
-        draw_projectiles(bazooka_projectiles, DARKGRAY);
-
-        draw_projectiles(laser_projectiles, DARKGRAY);
-
-        draw_player(DARKGRAY);
-
-        draw_enemies(DARKGRAY);
-
-        if (hovering)
-            DrawTexture(main_menu_texture, main_menu.x, main_menu.y, GRAY);
-        else
-            DrawTexture(main_menu_texture, main_menu.x, main_menu.y, WHITE);
-
-        DrawTextEx(GetFontDefault(), "MAIN MENU", (Vector2){main_menu.x + 16/DEFAULTZOOM, main_menu.y + 27.5/DEFAULTZOOM}, FONTSIZE/DEFAULTZOOM/1.15, 1, BLACK);
-
-        EndMode2D();
-
-        DrawTextEx(GetFontDefault(), "YOU DIED", (Vector2) {12*SCREENWIDTH/33, SCREENHEIGHT/10}, 3*FONTSIZE, FONTSIZE/4, RED);
-
-        DrawTextEx(GetFontDefault(), "SCORE: ", (Vector2){3*SCREENWIDTH/8, SCREENHEIGHT/3}, 3*FONTSIZE, FONTSIZE/4, INFMANBLUE1);
-
-        DrawTextEx(GetFontDefault(), player_score_string, (Vector2){3*SCREENWIDTH/8 + 9*FONTSIZE + 9*FONTSIZE/4, SCREENHEIGHT/3}, 3*FONTSIZE, FONTSIZE/4, INFMANBLUE2);
-
-        EndDrawing();
-    }
-}
-
-void player_damage(char source) {
-    switch (source) {
-        case 'S':
-            player.hearts--;
-            break;
-
-        case 'L':
-            player.hearts--;
-            player.speed.x = player.speed.x/10;
-            break;
-    }
-
-    player.vulnerable = 0;
 }
 
 void draw_player_hearts_ammo(int hearts, Camera2D *player_camera, Color filter) {
@@ -772,19 +582,6 @@ void draw_projectiles(PROJECTILE projectile_array[], Color filter) {
     }
 }
 
-void spike_damage(void) {
-    if (player.vulnerable) {
-        int horizontal_tile = floorf((player.position.x)/TILESIZE);
-        int horizontal_tile2 = floorf((player.position.x + PLAYERSIZE)/TILESIZE);
-        int vertical_tile = floorf((player.position.y + PLAYERSIZE - 8)/TILESIZE);
-
-        if (map[vertical_tile][horizontal_tile] == 'S' || map[vertical_tile][horizontal_tile2] == 'S' || map[vertical_tile - 1][horizontal_tile] == 'S' || map[vertical_tile - 1][horizontal_tile2] == 'S') {
-            player_jump(1.2);
-            player_damage('S');
-        }
-    }
-}
-
 void draw_enemies(Color filter) {
     for (int i = 0; i < ENEMIES; i++) {
         ENEMY en = enemies[i];
@@ -843,41 +640,6 @@ void player_laser(void) {
         player_shoot_timer += GetFrameTime();
     } else
         player_shoot_timer = 0.0f;
-
-}
-
-bool projectile_player_hit_test(PROJECTILE proj) {
-    Rectangle player_collision_box = {
-        player.position.x,
-        player.position.y,
-        player.size.x,
-        player.size.x,
-    };
-
-    bool collision_test;
-
-    if (player.vulnerable)
-        collision_test = CheckCollisionRecs(player_collision_box, proj.bullet);
-    else
-        collision_test = 0;
-
-    return collision_test;
-}
-
-void player_win(Camera2D player_camera, Color filter) {
-    if (is_player_on_ending_platform()) {
-        draw_level_ending_subtitles(player_camera, filter);
-        if(IsKeyPressed(KEY_L))
-            current_screen = 3;
-    }
-
-    PLAYER_ON_TOP player_on_top = {0, 0};
-
-    while (current_screen == 3) {
-        player_on_top = get_user_name_score(player_camera);
-    }
-
-    applies_array_modifications(player_on_top);
 
 }
 

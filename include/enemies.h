@@ -7,6 +7,7 @@
 #include "map.h"
 #include "textures_and_camera.h"
 #include "utils.h"
+#include <stdlib.h>
 
 #define ENEMYHEARTS 2
 #define ENEMYSIZE1 20
@@ -44,7 +45,7 @@ typedef struct {
 
 } Enemy;
 
-//enemies mechanics/update functions
+//enemies mechanics/update functions Enemy enemy_new(int tile_x, int tile_y); void init_enemies(DynVector *enemies, SmartMap map);
 void enemies_meet_player(DynVector enemies, Player *player);
 bool enemy_looking_at_player(Enemy *en, Player *player);
 void enemy_movement(DynVector enemies, Player *player, SmartMap smart_map);
@@ -52,6 +53,51 @@ bool enemy_should_shoot(Enemy *en); //use probability to return if the enemy sho
 void enemies_laser(DynVector enemies, ProjVector *projs);
 bool projectile_enemy_hit_test(Projectile *proj, Enemy *en);
 void enemies_drop_manager(DynVector enemies, Player *player);
+
+Enemy enemy_new(int tile_x, int tile_y) {
+
+    Enemy en;
+
+    en.speed.x = (float)(ENEMYMINSPEEDX*10 + (rand() % (int)(ENEMYMAXSPEEDX*10 - ENEMYMINSPEEDX*10 + 1))/10.0);
+    en.speed.y = (float)(ENEMYMINSPEEDY*10 + (rand() % (int)(ENEMYMAXSPEEDY*10 - ENEMYMINSPEEDY*10 + 1))/10.0);;
+    en.movement_range.x = TILESIZE*(ENEMYMINMOVERANGEX + (rand() % (ENEMYMAXMOVERANGEX - ENEMYMINMOVERANGEX + 1)));
+    en.movement_range.y = TILESIZE*(ENEMYMINMOVERANGEY + (rand() % (ENEMYMAXMOVERANGEY - ENEMYMINMOVERANGEY + 1)));
+    en.hearts = ENEMYHEARTS;
+    en.blocked_left = 0;
+    en.blocked_right = 0;
+    en.shooting = 0;
+    en.alive = 1;
+    en.reload_time = ENEMYRELOADTIMEMIN + (rand() % (ENEMYRELOADTIMEMAX - ENEMYRELOADTIMEMIN + 1));
+    en.shooting_timer = 0;
+    en.met_player = 0;
+
+    en.pivot = (Vector2){tile_x*TILESIZE, tile_y*TILESIZE};
+    en.position_size = (Rectangle){tile_x*TILESIZE, tile_y*TILESIZE, ENEMYSIZE1, ENEMYSIZE1};
+
+    return en;
+
+    //drops
+    //ammo[i].state = 0;
+    //ammo[i].position = (Vector2){0.0, 0.0};
+    //ammo[i].drop_type = 0;
+}
+
+void init_enemies(DynVector *enemies, SmartMap map) {
+
+    for (int i = 0; i < vector_len(map); i++) {
+        for (int j = 0; j < matrix_row_len(map, i); j++) {
+
+            char *charptr = matrix_get(map, i, j);
+
+            if (*charptr == 'M') {
+                Enemy en = enemy_new(j, i);
+                vector_push_back(enemies, &en);
+            }
+
+        }
+    }
+
+}
 
 void enemies_meet_player(DynVector enemies, Player *player) {
     for (int i = 0; i < vector_len(enemies); i++) {

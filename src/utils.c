@@ -66,6 +66,17 @@ void *matrix_get(DynVector vector, size_t i, size_t j) {
     return vector_get(*row, j);
 }
 
+size_t matrix_row_len(DynVector vector, size_t row) {
+    DynVector *rowptr;
+
+    rowptr = vector_get(vector, row);
+    if (rowptr == NULL) {
+        return 0;
+    }
+
+    return vector_len(*rowptr);
+}
+
 size_t vector_len(DynVector vector) {
     return vector.len;
 }

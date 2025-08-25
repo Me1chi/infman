@@ -15,6 +15,7 @@ void vector_push_back(DynVector *vector, void *item);
 void *vector_get(DynVector vector, size_t index);
 size_t vector_len(DynVector vector);
 void *matrix_get(DynVector vector, size_t i, size_t j);
+size_t matrix_row_len(DynVector vector, size_t row);
 
 void time_actions_update_bool(bool *update_var, float *timer, float goal_time);
 int roll_a_dice(int max_number);

@@ -37,6 +37,8 @@ add_executable(infman
     src/projectiles.c
     src/utils.c
     src/map.c
+    src/enemies.c
+    src/game.c
 )
 
 target_link_libraries(infman PRIVATE raylib)
