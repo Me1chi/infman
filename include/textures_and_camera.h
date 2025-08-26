@@ -1,7 +1,6 @@
 #pragma once
 #include "enemies.h"
 #include "file_handler.h"
-#include "game.h"
 #include "map.h"
 #include "player.h"
 #include "projectiles.h"
@@ -109,7 +108,7 @@ void draw_map(SmartMap map, TexturesCamera *txt_cam, Color filter);
 void draw_background(SmartMap map, TexturesCamera *txt_cam, Color filter);
 void draw_player_hearts_ammo(Player *player, TexturesCamera *txt_cam, Color filter);
 void draw_projectiles(ProjVector projs, TexturesCamera *txt_cam, Color filter);
-void draw_level_ending_subtitles(Player *player, TexturesCamera *txt_cam, Color filter);
+void draw_level_ending_subtitles(Player *player, SmartMap map, TexturesCamera *txt_cam, Color filter);
 void draw_enemies(DynVector enemies, TexturesCamera *txt_cam, Color filter);
 void draw_player(Player *player, TexturesCamera *txt_cam, Color filter);
 
@@ -241,9 +240,9 @@ void draw_projectiles(ProjVector projs, TexturesCamera *txt_cam, Color filter) {
     }
 }
 
-void draw_level_ending_subtitles(Player *player, TexturesCamera *txt_cam, Color filter){
+void draw_level_ending_subtitles(Player *player, SmartMap map, TexturesCamera *txt_cam, Color filter){
 
-    if (is_player_on_ending_platform()) {
+    if (is_player_on_ending_platform(player, map)) {
 
         char player_score_string_comp[40] = "WITH YOUR SCORE -> ";
 
@@ -414,7 +413,7 @@ int pause_display(Player *player, DynVector enemies, SmartMap map, ProjVector pr
         draw_enemies(enemies, txt_cam, DARKGRAY);
         draw_projectiles(projs, txt_cam, DARKGRAY);
         draw_player_hearts_ammo(player, txt_cam, DARKGRAY);
-        draw_level_ending_subtitles(player, txt_cam, DARKGRAY);
+        draw_level_ending_subtitles(player, map, txt_cam,DARKGRAY);
 
         //draw resume buttons
         if (resume_hovering == 1)

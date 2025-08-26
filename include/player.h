@@ -66,17 +66,17 @@ void is_player_on_map(Player *player, SmartMap map); //doesn't let the player to
 void player_movement(Player *player);
 void player_jump(Player *player, float scale);
 
-void player_laser(void); //TODO!
-void player_bazooka(void);
+void player_laser(Player *player, ProjVector *projs);
+void player_bazooka(Player *player, ProjVector *projs);
 
 void vulnerability_update(Player *player, float invincibility_timer); //makes the player vulnerable again after certain time
 void player_damage(Player *player, char source);
 void spike_damage(Player *player, SmartMap map);
 bool projectile_player_hit_test(Player *player, Projectile proj); //tests if the player was hit by some projectile
 
-void player_death(Player *player, TexturesCamera text_and_cam);
-void player_death_test(Camera2D player_camera); //tests if the game must end the death screen
-bool is_player_on_ending_platform(void);
+void player_death(Player *player, DynVector enemies, TexturesCamera *txt_cam, SmartMap map, GameContext *ctx, ProjVector projs);
+void player_death_test(Player *player, DynVector enemies, TexturesCamera *txt_cam, SmartMap map, GameContext *ctx, ProjVector projs);
+bool is_player_on_ending_platform(Player *player, SmartMap map);
 
 Vector2 find_player_spawn(SmartMap map) {
 
@@ -325,7 +325,7 @@ bool projectile_player_hit_test(Player *player, Projectile proj) {
     return collision_test;
 }
 
-void player_death(Player *player, TexturesCamera *text_and_cam, SmartMap map, GameContext *ctx, ProjVector *projs) {
+void player_death(Player *player, DynVector enemies, TexturesCamera *txt_cam, SmartMap map, GameContext *ctx, ProjVector projs) {
     int accept_flag = 0;
     int hovering;
     char player_score_string[MAXNAME];
@@ -346,7 +346,7 @@ void player_death(Player *player, TexturesCamera *text_and_cam, SmartMap map, Ga
 
     while(accept_flag == 0) {
         mouse_pointer = GetMousePosition();
-        mouse_pointer = GetScreenToWorld2D(GetMousePosition(), text_and_cam->camera);
+        mouse_pointer = GetScreenToWorld2D(GetMousePosition(), txt_cam->camera);
         hovering = 0;
 
         if (CheckCollisionPointRec(mouse_pointer, main_menu)) {
@@ -361,22 +361,18 @@ void player_death(Player *player, TexturesCamera *text_and_cam, SmartMap map, Ga
 
         ClearBackground(RAYWHITE);
 
-        BeginMode2D(text_and_cam->camera);
+        BeginMode2D(txt_cam->camera);
 
-        draw_background(DARKGRAY);
-
-        draw_map(DARKGRAY);
-
-        draw_projectiles(projs, DARKGRAY);
-
-        draw_player(DARKGRAY);
-
-        draw_enemies(DARKGRAY);
+        draw_background(map, txt_cam, DARKGRAY);
+        draw_map(map, txt_cam, DARKGRAY);
+        draw_player(player, txt_cam, DARKGRAY);
+        draw_enemies(enemies, txt_cam, DARKGRAY);
+        draw_projectiles(projs, txt_cam, DARKGRAY);
 
         if (hovering)
-            DrawTexture(main_menu_texture, main_menu.x, main_menu.y, GRAY);
+            DrawTexture(txt_cam->textures.menu.main_menu, main_menu.x, main_menu.y, GRAY);
         else
-            DrawTexture(main_menu_texture, main_menu.x, main_menu.y, WHITE);
+            DrawTexture(txt_cam->textures.menu.main_menu, main_menu.x, main_menu.y, WHITE);
 
         DrawTextEx(GetFontDefault(), "MAIN MENU", (Vector2){main_menu.x + 16/DEFAULTZOOM, main_menu.y + 27.5/DEFAULTZOOM}, FONTSIZE/DEFAULTZOOM/1.15, 1, BLACK);
 
@@ -392,4 +388,109 @@ void player_death(Player *player, TexturesCamera *text_and_cam, SmartMap map, Ga
     }
 }
 
+void player_death_test(Player *player, DynVector enemies, TexturesCamera *txt_cam, SmartMap map, GameContext *ctx, ProjVector projs) {
+    if (player->hearts <= 0 && !ctx->curr_screen)
+        player_death(player, enemies, txt_cam, map, ctx, projs);
+}
+
+bool is_player_on_ending_platform(Player *player, SmartMap map) {
+
+    Rectangle player_rect = {
+        player->position.x,
+        player->position.y,
+        player->size.x,
+        player->size.y
+    };
+
+    Rectangle ending_platform_rect = {0, 0, 0, 0};
+
+    for (int i = 0; i < vector_len(map); i++) {
+        for (int j = 0; j < matrix_row_len(map, i); j++) {
+            char *charptr = matrix_get(map, i, j);
+
+            if (*charptr == 'L') {
+                ending_platform_rect = (Rectangle) {
+                    TILESIZE * (j - 1),
+                    TILESIZE * (i - 1),
+                    TILESIZE * 3,
+                    TILESIZE * 2
+                };
+            }
+        }
+    }
+
+    return CheckCollisionRecs(ending_platform_rect, player_rect);
+}
+
+void player_laser(Player *player, ProjVector *projs) {
+
+    if (player->ammo_laser > 0 && IsKeyPressed(KEY_SPACE)) {
+        int current_direction;
+        Rectangle current_bullet;
+
+        if (projs->counter >= projs->max)
+            projs->counter = 0;
+
+        if (player->speed.x == 0)
+            current_direction = 1;
+        else
+            current_direction = player->speed.x/fabsf(player->speed.x);
+
+        if (current_direction == 1) {
+            current_bullet.x = player->position.x + PLAYERSIZE;
+        } else
+            current_bullet.x = player->position.x;
+
+        current_bullet.y = player->position.y + 9;
+        current_bullet.width = PROJECTILESIZE;
+        current_bullet.height = PROJECTILESIZE/2.0;
+
+        projs->arr[projs->counter] = (Projectile){current_bullet, (Vector2){current_direction, 0.0}, 0};
+
+        projs->counter++;
+        player->ammo_laser--;
+        player->shooting = 1;
+    }
+
+    if (player->timer.shoot >= PLAYERSHOOTTIME) {
+        player->shooting = 0;
+        player->timer.shoot = 0;
+    } else if (player->shooting) {
+        player->timer.shoot += GetFrameTime();
+    } else
+        player->timer.shoot = 0.0f;
+
+}
+
+void player_bazooka(Player *player, ProjVector *projs) {
+
+    if (player->ammo_bazooka > 0 && IsKeyPressed(KEY_B)) {
+        int current_direction;
+        Rectangle current_bullet;
+
+        if (projs->counter >= projs->max)
+            projs->counter = 0;
+
+        if (player->speed.x == 0)
+            current_direction = 1;
+        else
+            current_direction = player->speed.x/fabsf(player->speed.x);
+
+        if (current_direction == 1) {
+            current_bullet.x = player->position.x + PLAYERSIZE;
+        } else
+            current_bullet.x = player->position.x;
+
+        current_bullet.y = player->position.y + 9;
+        current_bullet.width = PROJECTILESIZE*2;
+        current_bullet.height = PROJECTILESIZE;
+
+        projs->arr[projs->counter] = (Projectile){current_bullet, (Vector2){current_direction, player->speed.y/10.0}, 1};
+
+        projs->counter++;
+        player->ammo_bazooka--;
+        player->shooting = 1;
+    }
+
+}
 
