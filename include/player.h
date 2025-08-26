@@ -45,6 +45,7 @@ typedef struct {
     int ammo_bazooka;
     int hearts;
     int score;
+    int sprite_counter;
 
     //state flags
     bool shooting;
@@ -104,6 +105,7 @@ Player init_player(SmartMap map) {
     player.size = (Vector2){PLAYERSIZE, PLAYERSIZE};
     player.speed = (Vector2){0, 0};
     player.position = find_player_spawn(map); //initializes the player position and the map
+    player.sprite_counter = 0;
     player.ammo_laser = PLAYERAMMO1;
     player.ammo_bazooka = PLAYERAMMO2;
     player.score = 0;

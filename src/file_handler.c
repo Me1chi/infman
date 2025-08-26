@@ -19,7 +19,7 @@ TopPlayer *top_players_from_bin() {
             top_players[i] = default_top_player;
         }
     }
-        
+
     fclose(fileptr);
 
     return top_players;
