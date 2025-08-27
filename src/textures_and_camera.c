@@ -41,9 +41,9 @@ void load_textures(GameTextures *textures) {
     textures->enemy.enemy = LoadTexture(FROM_RESOURCES("mobs/enemies.png"));
 
     // Projectile
-    textures->projectile.laser_ammo = LoadTexture(FROM_RESOURCES("player/laser_ammo.png"));
+    textures->projectile.laser_bullet = LoadTexture(FROM_RESOURCES("player/laser_bullet.png"));
     textures->projectile.enemy_laser_bullet = LoadTexture(FROM_RESOURCES("mobs/enemies_laser_bullet.png"));
-    textures->projectile.bazooka_ammo = LoadTexture(FROM_RESOURCES("player/bazooka_bullet.png"));
+    textures->projectile.bazooka_bullet = LoadTexture(FROM_RESOURCES("player/bazooka_bullet.png"));
     textures->projectile.laser_ammo = LoadTexture(FROM_RESOURCES("player/laser_ammo.png"));
     textures->projectile.bazooka_ammo = LoadTexture(FROM_RESOURCES("player/bazooka_ammo.png"));
 
@@ -80,9 +80,9 @@ void unload_textures(GameTextures* textures) {
     UnloadTexture(textures->enemy.enemy);
 
     // Projectile
-    UnloadTexture(textures->projectile.laser_ammo);
+    UnloadTexture(textures->projectile.laser_bullet);
     UnloadTexture(textures->projectile.enemy_laser_bullet);
-    UnloadTexture(textures->projectile.bazooka_ammo);
+    UnloadTexture(textures->projectile.bazooka_bullet);
     UnloadTexture(textures->projectile.laser_ammo);
     UnloadTexture(textures->projectile.bazooka_ammo);
 

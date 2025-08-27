@@ -1,5 +1,7 @@
 #include "projectiles.h"
 #include "enemies.h"
+#include "map.h"
+#include "player.h"
 #include "textures_and_camera.h"
 #include "utils.h"
 
@@ -77,6 +79,14 @@ void laser_shoot(Player *player, ProjVector *projs, DynVector *enemies, SmartMap
     }
 }
 
+void destroy_tile(SmartMap map, int ver_tile, int hor_tile) {
+    char *charptr = matrix_get(map, ver_tile, hor_tile);
+
+    if (charptr != NULL) {
+        *charptr = ' ';
+    }
+}
+
 void bazooka_update(Player *player, ProjVector *projs, DynVector *enemies, SmartMap *map) {
 
     Vector2 extremes = get_map_extremes(*map);
@@ -130,60 +140,32 @@ void bazooka_update(Player *player, ProjVector *projs, DynVector *enemies, Smart
                 get_tile_on_matrix(&horizontal_exp_tile, &vertical_exp_tile, projs->arr[i].bullet);
 
                 //explosion tile
-                char *charptr = matrix_get(*map, vertical_exp_tile, horizontal_exp_tile);
-                if (charptr != NULL) {
-                    *charptr = ' ';
-                }
+                destroy_tile(*map, vertical_exp_tile, horizontal_exp_tile);
 
                 //adjacent tiles
-                if (horizontal_exp_tile < matrix_row_len(*map, vertical_exp_tile) - 1)
-                    if (charptr++ != NULL) {
-                        *charptr = ' ';
-                        charptr--;
-                    }
-
-                if (horizontal_exp_tile > 0)
-                    if (charptr-- != NULL) {
-                        *charptr = ' ';
-                        charptr++;
-                    }
+                destroy_tile(*map, vertical_exp_tile, horizontal_exp_tile + 1);
+                destroy_tile(*map, vertical_exp_tile, horizontal_exp_tile - 1);
 
                 //above tile
-                if (vertical_exp_tile > 0) {
+                destroy_tile(*map, vertical_exp_tile - 1, horizontal_exp_tile);
 
-                    charptr = matrix_get(*map, vertical_exp_tile - 1, horizontal_exp_tile);
-                    if (charptr != NULL) {
-                        *charptr = ' ';
-                    }
-
-                    if (roll_a_dice(PLAYERLUCK) && charptr++ != NULL) {
-                        *charptr = ' ';
-                        charptr--;
-                    }
-
-                    if (roll_a_dice(PLAYERLUCK) && charptr-- != NULL) {
-                        *charptr = ' ';
-                        charptr++;
-                    }
+                if (roll_a_dice(PLAYERLUCK) == 1) {
+                    destroy_tile(*map, vertical_exp_tile - 1, horizontal_exp_tile + 1);
+                }
+                if (roll_a_dice(PLAYERLUCK) == 1 ) {
+                    destroy_tile(*map, vertical_exp_tile - 1, horizontal_exp_tile - 1);
                 }
 
-
                 //below tile
-                if (vertical_exp_tile < matrix_row_len(*map, vertical_exp_tile + 1) - 1) {
-                    charptr = matrix_get(*map, vertical_exp_tile + 1, horizontal_exp_tile);
-                    if (charptr != NULL) {
-                        *charptr = ' ';
-                    }
+                destroy_tile(*map, vertical_exp_tile + 1, horizontal_exp_tile);
 
-                    if (roll_a_dice(PLAYERLUCK) && charptr++ != NULL) {
-                        *charptr = ' ';
-                        charptr--;
-                    }
+                if (roll_a_dice(PLAYERLUCK) == 1) {
+                    destroy_tile(*map, vertical_exp_tile + 1, horizontal_exp_tile + 1);
 
-                    if (roll_a_dice(PLAYERLUCK) && charptr-- != NULL) {
-                        *charptr = ' ';
-                        charptr++;
-                    }
+                }
+                if (roll_a_dice(PLAYERLUCK) == 1) {
+                    destroy_tile(*map, vertical_exp_tile + 1, horizontal_exp_tile - 1);
+
                 }
 
                 projs->arr[i].bullet.y = -SCREENHEIGHT;

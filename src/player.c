@@ -220,7 +220,7 @@ void spike_damage(Player *player, SmartMap map) {
         charptr = matrix_get(map, vertical_tile - 1, horizontal_tile2);
         tests[3] = charptr ? *charptr : '{';
 
-        bool should_take_damage;
+        bool should_take_damage = false;
         for (int i = 0; i < 4; i++) {
             if (tests[i] == 'S') {
                 should_take_damage = true;

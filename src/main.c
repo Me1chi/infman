@@ -71,6 +71,7 @@ int main() {
     // Drop dynamic vectors and matrix
     map_drop(&map);
     vector_drop(&enemies);
+    free(projs.arr);
 
     //closes the window
     printf("AQUI DEVERIA FECHAR A JANELA");
