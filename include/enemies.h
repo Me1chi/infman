@@ -1,5 +1,4 @@
 #pragma once
-
 #include "math.h"
 #include "player.h"
 #include "projectiles.h"

@@ -69,7 +69,7 @@ void player_jump(Player *player, float scale);
 void player_laser(Player *player, ProjVector *projs);
 void player_bazooka(Player *player, ProjVector *projs);
 
-void vulnerability_update(Player *player, float invincibility_timer); //makes the player vulnerable again after certain time
+void vulnerability_update(Player *player);
 void player_damage(Player *player, char source);
 void spike_damage(Player *player, SmartMap map);
 bool projectile_player_hit_test(Player *player, Projectile proj); //tests if the player was hit by some projectile
@@ -253,8 +253,8 @@ void player_jump(Player *player, float scale) {
     player->speed.y = -JUMPSPEED*scale;
 }
 
-void vulnerability_update(Player *player, float invincibility_timer) {
-    time_actions_update_bool(&player->vulnerable, &invincibility_timer, INVINCIBILITYTIME);
+void vulnerability_update(Player *player) {
+    time_actions_update_bool(&player->vulnerable, &player->timer.invincibility, INVINCIBILITYTIME);
 }
 
 void player_damage(Player *player, char source) {

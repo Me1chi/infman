@@ -1,4 +1,6 @@
+#include "enemies.h"
 #include "game.h"
+#include "projectiles.h"
 #include "raylib.h"
 #include <stdio.h>
 #include <time.h>
@@ -7,6 +9,8 @@
 #include "textures_and_camera.h"
 #include "top_scores.h"
 #include "map.h"
+#include "game.h"
+#include "utils.h"
 
 //DROP ammo[ENEMIES] = {0};
 
@@ -24,6 +28,10 @@ int main() {
     Vector2 map_extremes_float = get_map_extremes(map);
     int map_extreme_x = (int)map_extremes_float.x;
     int map_extreme_y = (int)map_extremes_float.y;
+
+    Player player;
+    ProjVector projs;
+    DynVector enemies = vector_new(sizeof(Enemy));
 
     // Camera and textures from the files
     TexturesCamera textures_and_camera;
@@ -49,7 +57,7 @@ int main() {
     };
 
     while (!WindowShouldClose() && game_context.running) {
-        main_menu_test();
+        main_menu_test(&player, &enemies, &projs, &map, top_players, &textures_and_camera);
         pause(&textures_and_camera);
         gaming_test(&textures_and_camera);
     }
@@ -72,10 +80,4 @@ int main() {
     return 0;
 }
 
-void main_menu_test(void) {
-    //tests if it must enter the main menu
-    if (current_screen == 2) {
-        current_screen = main_menu_display();
-    }
-}
 
