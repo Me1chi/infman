@@ -1,9 +1,10 @@
 #include <stdio.h>
 #include <string.h>
 #include <ctype.h>
+#include <time.h>
 #include "top_scores.h"
-#include "game.h"
 #include "textures_and_camera.h"
+#include "game.h"
 
 void infman_dance(Player *player, TexturesCamera *txt_cam, Vector2 position, Color filter) {
     player->timer.sprite += GetFrameTime();
@@ -36,7 +37,8 @@ void applies_array_modifications(TopPlayer pl, TopPlayer *top_players) {
         top_players[i] = top_players[i - 1];
     }
 
-    top_players[index] = pl;
+    if (index != TOPLAYERS)
+        top_players[index] = pl;
 }
 
 int compare_scores_array(TopPlayer pl, TopPlayer *top_players) {

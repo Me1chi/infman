@@ -7,8 +7,9 @@ TopPlayer *top_players_from_bin() {
 
     TopPlayer *top_players = calloc(TOPLAYERS, sizeof(TopPlayer));
 
-    if ((fileptr = fopen("../config/top_scores.bin", "r+")) != NULL) {
+    if ((fileptr = fopen("../config/top_scores.bin", "rb")) != NULL) {
         fread(top_players, sizeof(TopPlayer), TOPLAYERS, fileptr);
+        fclose(fileptr);
     } else {
         TopPlayer default_top_player = {
             "Player",
@@ -19,8 +20,6 @@ TopPlayer *top_players_from_bin() {
             top_players[i] = default_top_player;
         }
     }
-
-    fclose(fileptr);
 
     return top_players;
 }

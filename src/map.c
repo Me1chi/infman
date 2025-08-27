@@ -40,7 +40,7 @@ SmartMap fetch_map() {
     return vector;
 }
 
-void drop_map(SmartMap *smart_map) {
+void map_drop(SmartMap *smart_map) {
     for (int i = 0; i < smart_map->len; i++) {
         vector_drop((DynVector *)vector_get(*smart_map, i));
     }

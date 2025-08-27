@@ -2,7 +2,7 @@
 #include "raylib.h"
 #include <stdio.h>
 
-typedef struct {
+typedef struct DynVector {
     void *ptr;
     size_t len;
     size_t size;

@@ -57,9 +57,9 @@ int main() {
     };
 
     while (!WindowShouldClose() && game_context.running) {
-        main_menu_test(&player, &enemies, &projs, &map, top_players, &textures_and_camera);
-        pause(&textures_and_camera);
-        gaming_test(&textures_and_camera);
+        main_menu_test(&player, &enemies, &projs, &map, top_players, &game_context, &textures_and_camera);
+        pause(&player, enemies, map, projs, &textures_and_camera, &game_context);
+        gaming_test(&player, &enemies, &projs, &map, top_players, &game_context, &textures_and_camera);
     }
 
     //textures unloading
@@ -68,13 +68,12 @@ int main() {
     //closes the audio device
     CloseAudioDevice();
 
-    // Drop dyn allocated map
+    // Drop dynamic vectors and matrix
     map_drop(&map);
-
-    // Saves the leaderboard binary file
-    top_players_to_bin(top_players);
+    vector_drop(&enemies);
 
     //closes the window
+    printf("AQUI DEVERIA FECHAR A JANELA");
     CloseWindow();
 
     return 0;
