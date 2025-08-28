@@ -74,7 +74,6 @@ int main() {
     free(projs.arr);
 
     //closes the window
-    printf("AQUI DEVERIA FECHAR A JANELA");
     CloseWindow();
 
     return 0;

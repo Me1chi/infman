@@ -1,9 +1,11 @@
 # Build folders
 build/
 bin/
+.xmake/
 
 # Files that should be auto generated
 config/auto/
+config/top_scores.bin
 
 # Cache
 .cache/

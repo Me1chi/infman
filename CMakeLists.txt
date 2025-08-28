@@ -1,8 +1,6 @@
 cmake_minimum_required(VERSION 3.7)
 project(infman C)
 
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fsanitize=address -g")
-
 # Put the executable file in the bin folder
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/bin)
 
